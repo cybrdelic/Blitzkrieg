@@ -14,7 +14,7 @@ console = Console()
 INFO_COLOR = "#808080"
 SUCCESS_COLOR = "#00FF00"  # This is the hex code for red.
 WARNING_COLOR = "bold yellow"
-ERROR_COLOR = "FF0000"
+ERROR_COLOR = "#FF0000"
 
 def print_cli_header():
     """Prints a CLI header."""
