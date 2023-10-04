@@ -24,7 +24,7 @@ def setup(args):
 
     # Initialize pgAdmin
     pgadmin_email, pgadmin_password = get_pgadmin_credentials()
-    pgadmin = initialize_pgadmin(project_name)
+    pgadmin = initialize_pgadmin(project_name, email=pgadmin_email, password=pgadmin_password)
     pgadmin.start_container(pgadmin_email, pgadmin_password)
     print_message(f"pgAdmin is now running. Access it at http://localhost using the provided credentials.", style="bold green")
 

@@ -31,14 +31,14 @@ def initialize_postgresql(docker, project_name, pg_password):
 
     return postgres
 
-def initialize_pgadmin(project_name):
+def initialize_pgadmin(project_name, email, password):
     pgadmin = PgAdminManager(project_name)
     if pgadmin.container_exists():
         print_message("pgAdmin container already exists. Stopping and removing...", style="bold yellow")
         pgadmin.remove_container()
 
     print_message("Starting pgAdmin container...", style="bold yellow")
-    pgadmin_port = pgadmin.start_container()
+    pgadmin_port = pgadmin.start_container(email, password)
     print_message(f"pgAdmin is now running. Access it at http://localhost:{pgadmin_port} using the credentials provided.", style="bold green")
 
     return pgadmin
