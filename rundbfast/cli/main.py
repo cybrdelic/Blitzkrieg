@@ -1,4 +1,6 @@
 import argparse
+
+from ..shared.utils import wait_for_container
 from .user_input import get_project_name, get_postgres_password, get_persistence_choice, get_pgadmin_credentials
 from ..managers.initializers import initialize_docker, initialize_postgresql, initialize_pgadmin
 from .ui import (
@@ -6,13 +8,29 @@ from .ui import (
     pause_for_user,
     print_label,
     print_cli_header,
+    print_error,
     print_cli_footer
 )
 
-def setup(args):
-    # Print a welcome header
-    print_cli_header()
+def setup_meta(args):
+    db_name = 'meta'
+    print_label(f"Setting up meta database for RunDBFast")
 
+    docker = initialize_docker()
+    postgres, pg_password = initialize_postgresql(docker, db_name)
+    postgres.ensure_data_persistence(pg_password)
+    postgres.start_container(pg_password)
+
+    # Wait for the PostgreSQL container to be running
+    if wait_for_container(docker, f"{db_name}-postgres"):
+        print_success(f"RunDbFast PostgreSQL database is now running with data persistence enabled.")
+    else:
+        print_error("Failed to start the PostgreSQL database.")
+
+    initialize_pgadmin(db_name)
+
+
+def setup(args):
     # Get project name
     project_name = get_project_name()
     print_label(f"Setting up for project: {project_name}")
@@ -43,6 +61,9 @@ def main():
     parser_setup = subparsers.add_parser('setup', help='Setup databases.')
     parser_setup.add_argument('database', choices=['postgres'], help='The database to setup.')
     parser_setup.set_defaults(func=setup)
+
+    parser_setup_meta_db = subparsers.add_parser('setup-meta', help="Setup RunDBFast meta database")
+    parser_setup_meta_db.set_defaults(func=setup_meta)
 
     args = parser.parse_args()
     args.func(args)
