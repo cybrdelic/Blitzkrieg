@@ -1,4 +1,6 @@
 import time
+
+from ..flow.ui import print_warning
 from .command_runner import CommandRunner
 
 class ContainerManager:
@@ -15,7 +17,7 @@ class ContainerManager:
 
     def remove_container(self):
         if self.container_exists():
-            print(f"Container with name {self.container_name} already exists. Stopping and removing...")
+            print_warning(f"Container with name {self.container_name} already exists. Stopping and removing...")
             self.runner.run_command(f"docker stop {self.container_name}")
             self.runner.run_command(f"docker rm {self.container_name}")
             time.sleep(5)  # Give Docker a few seconds to free up the name

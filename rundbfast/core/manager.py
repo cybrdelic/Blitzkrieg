@@ -6,6 +6,7 @@ from rich.console import Console
 from .container_manager import ContainerManager
 from .command_runner import CommandRunner
 import socket
+from ..flow.ui import print_warning, print_message
 
 console = Console()
 
@@ -73,14 +74,14 @@ class PostgreSQLManager(ContainerManager):
 
     def remove_container(self):
         if self.container_exists():
-            print(f"Container with name {self.container_name} already exists. Stopping and removing...")
+            print_warning(f"Container with name {self.container_name} already exists. Stopping and removing...")
             self.runner.run_command(f"docker stop {self.container_name}")
             self.runner.run_command(f"docker rm {self.container_name}")
             time.sleep(5)  # Give Docker a few seconds to free up the name
 
     def ensure_data_persistence(self, password):
         self.remove_container()
-        print("Setting up Docker volume for data persistence...")
+        print_message("Setting up Docker volume for data persistence...")
 
 class PgAdminManager(ContainerManager):
     def __init__(self, project_name):
@@ -100,7 +101,7 @@ class PgAdminManager(ContainerManager):
 
     def remove_container(self):
         if self.container_exists():
-            print(f"Container with name {self.container_name} already exists. Stopping and removing...")
+            print_warning(f"Container with name {self.container_name} already exists. Stopping and removing...")
             self.runner.run_command(f"docker stop {self.container_name}")
             self.runner.run_command(f"docker rm {self.container_name}")
             time.sleep(5)  # Give Docker a few seconds to free up the name

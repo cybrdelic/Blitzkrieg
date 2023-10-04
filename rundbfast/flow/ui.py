@@ -7,21 +7,26 @@ from rich.text import Text
 from contextlib import contextmanager
 from rich.rule import Rule
 import pyfiglet
+import questionary
 
 console = Console()
 
+INFO_COLOR = "#808080"
+SUCCESS_COLOR = "#00FF00"  # This is the hex code for red.
+WARNING_COLOR = "bold yellow"
+ERROR_COLOR = "FF0000"
+
 def print_cli_header():
     """Prints a CLI header."""
-    title_text = "RunDBFast"
-    ascii_art = pyfiglet.figlet_format(title_text, font="slant")
-    console.print(Panel("[bold bright_yellow]" + ascii_art + "[/bold bright_yellow]", expand=False, style="bright_yellow"))
+    title_text = pyfiglet.figlet_format("RunDBFast", font="slant")
+    console.print(Panel("[bold bright_yellow]" + title_text + "[/bold bright_yellow]", expand=False))
 
 def print_cli_footer():
     """Prints a CLI footer."""
     footer_text = "[bold bright_cyan]🚀 Thanks for riding with us! Until next time! 🚀[/bold bright_cyan]"
     console.print(Rule(footer_text, style="bright_cyan"))
 
-def print_message(message, style="bright_blue", title=None):
+def print_message(message, style="#808080", title=None):
     if title:
         console.print(Panel(message, title=title, style=style))
     else:
@@ -65,6 +70,34 @@ def print_header(message, style="bold"):
     console.print(Text(f" {message} ", style=style), end="")
     console.print(Text(half_rule))
 
-def print_label(text, style="bold bright_green"):
+def print_label(text, style="#808080"):
     """Prints a label."""
     console.print(Text(text, style=style))
+
+def print_warning(message):
+    """Prints a warning message."""
+    console.print(f"⚠️  {message}", style=WARNING_COLOR)
+
+def print_error(message):
+    """Prints an error message."""
+    console.print(f"❌  {message}", style=ERROR_COLOR)
+
+def print_success(message):
+    """Prints a success message."""
+    console.print(f"✅  {message}", style=SUCCESS_COLOR)
+
+def print_divider():
+    """Prints a simple divider for visually separating sections."""
+    console.print(Rule(style=INFO_COLOR))
+
+def show_choices(prompt, choices_list):
+    """Displays a list of choices and lets the user select one."""
+    return questionary.select(prompt, choices=choices_list).ask()
+
+def pause_for_user():
+    """Pauses the execution until the user presses enter."""
+    input("\nPress [Enter] to continue...")
+
+def clear_screen():
+    """Clears the terminal."""
+    console.clear()

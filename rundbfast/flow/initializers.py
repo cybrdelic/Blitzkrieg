@@ -1,6 +1,6 @@
 from .user_input import get_pgadmin_credentials, get_postgres_password
 from ..core.manager import DockerManager, PostgreSQLManager, PgAdminManager
-from .ui import print_message, show_progress, print_header, show_spinner
+from .ui import print_message, show_progress, print_header, show_spinner, print_success, print_warning
 
 def initialize_docker():
     print_header("Docker Initialization")
@@ -9,9 +9,9 @@ def initialize_docker():
         with show_progress("Installing Docker...") as progress:
             docker.install()
             progress.update(100)
-        print_message("Docker installed successfully!", style="bold green")
+        print_success("Docker installed successfully!")
     else:
-        print_message("Docker is already installed.", style="bold blue")
+        print_success("Docker is already installed.")
     return docker
 
 def initialize_postgresql(docker, project_name):
@@ -21,15 +21,15 @@ def initialize_postgresql(docker, project_name):
 
     container_name = f"{project_name}-postgres"
     if docker.container_exists(container_name):
-        print_message(f"Container with name {container_name} already exists. Stopping and removing...", style="bold yellow")
+        print_warning(f"Container with name {container_name} already exists. Stopping and removing...")
         docker.remove_container(container_name)
 
     postgres = PostgreSQLManager(container_name)
-    print_message(f"Starting container {container_name}...", style="bold yellow")
+    print_message(f"Starting container {container_name}...")
     used_port = postgres.start_container(pg_password)
-    print_message(f"PostgreSQL is now running on port {used_port}.", style="bold green")
+    print_success(f"PostgreSQL is now running on port {used_port}.")
 
-    print_message("Waiting for PostgreSQL to be ready...", style="bold yellow")
+    print_message("Waiting for PostgreSQL to be ready...")
     with show_spinner("Connecting to PostgreSQL..."):
         postgres.wait_for_ready()
     postgres.setup_database(project_name)
@@ -44,8 +44,8 @@ def initialize_pgadmin(project_name):
         pgadmin.remove_container()
 
     pgadmin_email, pgadmin_password = get_pgadmin_credentials()
-    print_message("Starting pgAdmin container...", style="bold yellow")
+    print_message("Starting pgAdmin container...")
     pgadmin.start_container(pgadmin_email, pgadmin_password)
-    print_message(f"pgAdmin is now running. Access it at http://localhost using the email and password provided.", style="bold green")
+    print_success(f"pgAdmin is now running. Access it at http://localhost using the email and password provided.")
 
     return pgadmin
