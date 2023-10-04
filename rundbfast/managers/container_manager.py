@@ -1,7 +1,7 @@
 import time
 
-from ..flow.ui import print_warning
-from .command_runner import CommandRunner
+from ..cli.ui import print_warning
+from ..shared.command_runner import CommandRunner
 
 class ContainerManager:
     def __init__(self, container_name):

@@ -1,7 +1,7 @@
 import argparse
-from .flow.user_input import get_project_name, get_postgres_password, get_persistence_choice, get_pgadmin_credentials
-from .flow.initializers import initialize_docker, initialize_postgresql, initialize_pgadmin
-from .flow.ui import (
+from .user_input import get_project_name, get_postgres_password, get_persistence_choice, get_pgadmin_credentials
+from ..managers.initializers import initialize_docker, initialize_postgresql, initialize_pgadmin
+from .ui import (
     print_success,
     pause_for_user,
     print_label,

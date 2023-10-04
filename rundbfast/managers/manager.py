@@ -4,9 +4,9 @@ import subprocess
 import time
 from rich.console import Console
 from .container_manager import ContainerManager
-from .command_runner import CommandRunner
+from ..shared.command_runner import CommandRunner
 import socket
-from ..flow.ui import print_warning, print_message
+from ..cli.ui import print_warning, print_message
 
 console = Console()
 

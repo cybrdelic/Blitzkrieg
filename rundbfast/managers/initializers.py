@@ -1,6 +1,6 @@
-from .user_input import get_pgadmin_credentials, get_postgres_password
-from ..core.manager import DockerManager, PostgreSQLManager, PgAdminManager
-from .ui import print_message, show_progress, print_header, show_spinner, print_success, print_warning
+from ..cli.user_input import get_pgadmin_credentials, get_postgres_password
+from .manager import DockerManager, PostgreSQLManager, PgAdminManager
+from ..cli.ui import print_message, show_progress, print_header, show_spinner, print_success, print_warning
 
 def initialize_docker():
     print_header("Docker Initialization")
