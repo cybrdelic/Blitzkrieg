@@ -1,5 +1,5 @@
 import time
-from .manager import CommandRunner
+from .command_runner import CommandRunner
 
 class ContainerManager:
     def __init__(self, container_name):

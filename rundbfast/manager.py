@@ -3,29 +3,11 @@ import shutil
 import subprocess
 import time
 from rich.console import Console
+from .container_manager import ContainerManager
+from .command_runner import CommandRunner
 import socket
 
 console = Console()
-
-class CommandRunner:
-    @staticmethod
-    def run_command(command):
-        try:
-            return subprocess.run(command, shell=True, check=True, capture_output=True, text=True).stdout.strip()
-        except subprocess.CalledProcessError as e:
-            console.print(f"Error executing '{command}':", e.stderr, style="bold red")
-            raise
-    @staticmethod
-    def is_port_in_use(port):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            return s.connect_ex(('localhost', port)) == 0
-
-    @staticmethod
-    def find_available_port(starting_port=5432):
-        port = starting_port
-        while CommandRunner.is_port_in_use(port):
-            port += 1  # try the next port
-        return port
 
 
 class DockerManager:
@@ -52,11 +34,7 @@ class DockerManager:
         self.runner.run_command(f"docker stop {container_name}")
         self.runner.run_command(f"docker rm {container_name}")
 
-class PostgreSQLManager:
-    def __init__(self, container_name):
-        self.container_name = container_name
-        self.runner = CommandRunner()
-
+class PostgreSQLManager(ContainerManager):
     def start_container(self, password):
         port = self.runner.find_available_port(5432)
         self.runner.run_command(f"docker run --name {self.container_name} -e POSTGRES_PASSWORD={password} -p {port}:{port} -d postgres:latest")
@@ -104,19 +82,18 @@ class PostgreSQLManager:
         self.remove_container()
         print("Setting up Docker volume for data persistence...")
 
-class PgAdminManager:
+class PgAdminManager(ContainerManager):
     def __init__(self, project_name):
-        self.container_name = f"{project_name}-PgAdmin"
-        self.runner = CommandRunner()
-
+        super().__init__(f"{project_name}-PgAdmin")
 
     def start_container(self, email, password):
-        port=self.runner.find_available_port()
+        port = self.runner.find_available_port(80)
         self.runner.run_command(f"docker run --name {self.container_name} -p {port}:80 \
             -e 'PGADMIN_DEFAULT_EMAIL={email}' \
             -e 'PGADMIN_DEFAULT_PASSWORD={password}' \
             -d dpage/pgadmin4")
         return port
+
     def container_exists(self):
         existing_containers = self.runner.run_command(f"docker ps -a -q -f name={self.container_name}")
         return bool(existing_containers)
