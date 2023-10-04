@@ -21,3 +21,7 @@ class ContainerManager:
             self.runner.run_command(f"docker stop {self.container_name}")
             self.runner.run_command(f"docker rm {self.container_name}")
             time.sleep(5)  # Give Docker a few seconds to free up the name
+
+    def is_container_running(self):
+        output = self.runner.run_command(f"docker inspect -f '{{{{.State.Running}}}}' {self.container_name}")
+        return output == 'true'
