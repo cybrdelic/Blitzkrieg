@@ -58,8 +58,18 @@ def setup(args):
         console.print("Starting pgAdmin container...", style="bold yellow")
         pgadmin.start_container(pgadmin_email, pgadmin_password)
 
-        console.print(f"pgAdmin is now running. Access it at http://localhost using the email and password provided.", style="bold green")
-        console.print(Panel.fit("Thank you for using our setup tool! See you next time!", style="bold blue"))
+    pgadmin_email = questionary.text("Enter an email for pgAdmin:").ask()
+    pgadmin_password = questionary.password("Enter a password for pgAdmin:").ask()
+
+    pgadmin = PgAdminManager(project_name)
+    if pgadmin.container_exists():
+        console.print(f"{pgadmin.container_name} container already exists. Stopping and removing...", style="bold yellow")
+        pgadmin.remove_container()
+
+    console.print(f"Starting {pgadmin.container_name} container...", style="bold yellow")
+    pgadmin_port = pgadmin.start_container(pgadmin_email, pgadmin_password)
+
+    console.print(Panel.fit(f"pgAdmin is now running on port {pgadmin_port}. Access it at http://localhost:{pgadmin_port} using the email and password provided.", style="bold blue"))
 
 def main():
     parser = argparse.ArgumentParser(description='RunDBFast command-line tool.')

@@ -67,10 +67,12 @@ class PostgreSQLManager:
         result = self.runner.run_command(f"docker exec {self.container_name} psql -U postgres -tAc \"SELECT 1 FROM pg_database WHERE datname='{db_name}'\"")
         return bool(result)
 
-    def setup_database(self):
-        if not self.database_exists('synthextra'):
-            self.runner.run_command(f"docker exec {self.container_name} psql -U postgres -c 'CREATE DATABASE synthextra;'")
-        self.runner.run_command(f"docker exec {self.container_name} psql -U postgres -d synthextra -c 'CREATE EXTENSION IF NOT EXISTS cube;'")
+    def setup_database(self, project_name):
+        # Quote the project name to handle reserved keywords
+        quoted_project_name = f"\"{project_name}\""
+        if not self.database_exists(project_name):
+            self.runner.run_command(f"docker exec {self.container_name} psql -U postgres -c 'CREATE DATABASE {quoted_project_name};'")
+        self.runner.run_command(f"docker exec {self.container_name} psql -U postgres -d {project_name} -c 'CREATE EXTENSION IF NOT EXISTS cube;'")
 
     def container_exists(self):
         existing_containers = self.runner.run_command(f"docker ps -a -q -f name={self.container_name}")
@@ -89,15 +91,24 @@ class PostgreSQLManager:
         self.runner.run_command(f"docker run --name {self.container_name} -e POSTGRES_PASSWORD={password} -p 5432:5432 -v postgres_data:/var/lib/postgresql/data -d postgres:latest")
 
 class PgAdminManager:
-    def __init__(self, container_name="pgadmin4"):
-        self.container_name = container_name
+    def __init__(self, project_name):
+        self.container_name = f"{project_name}-PgAdmin"
         self.runner = CommandRunner()
 
+    @staticmethod
+    def is_port_in_use(port):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            return s.connect_ex(('localhost', port)) == 0
+
     def start_container(self, email, password):
-        self.runner.run_command(f"docker run --name {self.container_name} -p 80:80 \
+        port = 80
+        while self.is_port_in_use(port):
+            port += 1  # try the next port
+        self.runner.run_command(f"docker run --name {self.container_name} -p {port}:80 \
             -e 'PGADMIN_DEFAULT_EMAIL={email}' \
             -e 'PGADMIN_DEFAULT_PASSWORD={password}' \
             -d dpage/pgadmin4")
+        return port
 
     def container_exists(self):
         existing_containers = self.runner.run_command(f"docker ps -a -q -f name={self.container_name}")
