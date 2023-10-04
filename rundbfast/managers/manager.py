@@ -6,8 +6,9 @@ from rich.console import Console
 from .container_manager import ContainerManager
 from ..shared.command_runner import CommandRunner
 import socket
-from ..cli.ui import print_warning, print_message
-
+from ..cli.ui import print_warning, print_message, show_choices, print_success, print_error
+import tempfile
+import json
 console = Console()
 
 
@@ -113,4 +114,68 @@ class PgAdminManager(ContainerManager):
             print_warning(f"Container with name {self.container_name} already exists. Stopping and removing...")
             self.runner.run_command(f"docker stop {self.container_name}")
             self.runner.run_command(f"docker rm {self.container_name}")
+
             time.sleep(5)  # Give Docker a few seconds to free up the name
+    def add_server(self, server_name, db_name, password, pgadmin_email):
+        try:
+            server_config = self._generate_server_config(server_name, db_name, password)
+
+            existing_servers = self._check_and_get_existing_servers()
+            if existing_servers == "exists":
+                choice = show_choices("servers.json already exists in the container. Overwrite?", ["Yes", "No"])
+                if choice == "No":
+                    print_warning("Server addition aborted by user.")
+                    return
+
+            temp_file_path = self._write_server_config_to_temp_file(server_config)
+
+            self._install_flask_if_needed()
+
+            self._execute_add_server_command(temp_file_path, pgadmin_email)
+
+            print_success(f"Server '{server_name}' added to pgAdmin successfully!")
+
+        except subprocess.CalledProcessError as cpe:
+            print_error(f"Command execution failed: {str(cpe)}")
+        except Exception as e:
+            print_error(f"Error adding server: {str(e)}")
+        finally:
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
+
+    def _generate_server_config(self, server_name, db_name, password):
+        return {
+            "Servers": {
+                "1": {
+                    "Name": server_name,
+                    "Group": "Servers",
+                    "Host": "localhost",
+                    "Port": 5432,
+                    "MaintenanceDB": db_name,
+                    "Username": "postgres",
+                    "Password": password,
+                    "SSLMode": "prefer",
+                    "UseSSHTunnel": 0
+                }
+            }
+        }
+
+    def _check_and_get_existing_servers(self):
+        check_cmd = f"docker exec {self.container_name} sh -c 'if [ -f /pgadmin4/servers.json ]; then echo exists; else echo not_exists; fi'"
+        return self.runner.run_command(check_cmd).strip()
+
+    def _write_server_config_to_temp_file(self, server_config):
+        with tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".json") as f:
+            json.dump(server_config, f)
+            return f.name
+
+    def _install_flask_if_needed(self):
+        check_flask_cmd = f"docker exec {self.container_name} pip list | grep Flask"
+        flask_installed = self.runner.run_command(check_flask_cmd).strip()
+        if not flask_installed:
+            install_flask_cmd = f"docker exec {self.container_name} pip install Flask"
+            self.runner.run_command(install_flask_cmd)
+
+    def _execute_add_server_command(self, temp_file_path, pgadmin_email):
+        cmd = f"docker cp {temp_file_path} {self.container_name}:/pgadmin4/servers.json && docker exec {self.container_name} python3 /pgadmin4/setup.py --load-servers /pgadmin4/servers.json --user {pgadmin_email}"
+        self.runner.run_command(cmd)
