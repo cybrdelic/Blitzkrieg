@@ -55,7 +55,7 @@ def setup(args):
     pgadmin_email = questionary.text("Enter an email for pgAdmin:").ask()
     pgadmin_password = questionary.password("Enter a password for pgAdmin:").ask()
 
-    pgadmin = PgAdminManager()
+    pgadmin = PgAdminManager(project_name)
     if pgadmin.container_exists():
         console.print("pgAdmin container already exists. Stopping and removing...", style="bold yellow")
         pgadmin.remove_container()
