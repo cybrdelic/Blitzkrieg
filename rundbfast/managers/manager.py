@@ -35,6 +35,14 @@ class DockerManager:
         self.runner.run_command(f"docker stop {container_name}")
         self.runner.run_command(f"docker rm {container_name}")
 
+    def is_container_running(self, container_name):
+        output = self.runner.run_command(f"docker inspect -f '{{{{.State.Running}}}}' {container_name}")
+        return output == 'true'
+
+    def image_exists(self, image_name):
+        images = self.runner.run_command("docker images -q " + image_name)
+        return bool(images)
+
 class PostgreSQLManager(ContainerManager):
     def start_container(self, password):
         port = self.runner.find_available_port(5432)
@@ -82,6 +90,7 @@ class PostgreSQLManager(ContainerManager):
     def ensure_data_persistence(self, password):
         self.remove_container()
         print_message("Setting up Docker volume for data persistence...")
+        # Add any extensions or initial setup for the meta database here.
 
 class PgAdminManager(ContainerManager):
     def __init__(self, project_name):
