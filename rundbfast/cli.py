@@ -1,5 +1,5 @@
 import argparse
-from .manager import CommandRunner, DockerManager, PostgreSQLManager, PgAdminManager
+from .manager import DockerManager, PostgreSQLManager, PgAdminManager
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress
@@ -10,68 +10,61 @@ console = Console()
 def setup(args):
     project_name = questionary.text("Enter your project name:").ask()
 
-    if args.database == 'postgres':
-        welcome_message = Panel.fit("Welcome to RunDBFast!", style="bold blue")
-        console.print(welcome_message)
+    welcome_message = Panel.fit(f"Welcome to RunDBFast, setting up for {project_name}!", style="bold blue")
+    console.print(welcome_message)
 
-        docker = DockerManager()
-        if not docker.is_installed():
-            with Progress() as progress:
-                task = progress.add_task("[cyan]Installing Docker...", total=100)
-                docker.install()
-                while not progress.finished:
-                    progress.update(task, advance=20)
-                    time.sleep(0.5)
-            console.print("Docker installed successfully!", style="bold green")
-        else:
-            console.print("Docker is already installed.", style="bold blue")
+    docker = DockerManager()
+    if not docker.is_installed():
+        with Progress() as progress:
+            task = progress.add_task("[cyan]Installing Docker...", total=100)
+            docker.install()
+            while not progress.finished:
+                progress.update(task, advance=20)
+                time.sleep(0.5)
+        console.print("Docker installed successfully!", style="bold green")
+    else:
+        console.print("Docker is already installed.", style="bold blue")
 
-        console.print("Pulling PostgreSQL image...", style="bold yellow")
-        docker.pull_image("postgres:latest")
+    console.print("Pulling PostgreSQL image...", style="bold yellow")
+    docker.pull_image("postgres:latest")
 
-        pg_password = questionary.password("Enter a secure password for PostgreSQL:").ask()
+    pg_password = questionary.password("Enter a secure password for PostgreSQL:").ask()
 
-        container_name = "synthextra-postgres"
-        if docker.container_exists(container_name):
-            console.print(f"Container with name {container_name} already exists. Stopping and removing...", style="bold yellow")
-            docker.remove_container(container_name)
+    container_name = f"{project_name}-postgres"
+    if docker.container_exists(container_name):
+        console.print(f"Container with name {container_name} already exists. Stopping and removing...", style="bold yellow")
+        docker.remove_container(container_name)
 
-        postgres = PostgreSQLManager(container_name)
-        console.print(f"Starting container {container_name}...", style="bold yellow")
-        postgres.start_container(pg_password)
-        console.print("Waiting for PostgreSQL to be ready...", style="bold yellow")
-        postgres.wait_for_ready()
-        postgres.setup_database()
+    postgres = PostgreSQLManager(container_name)
+    console.print(f"Starting container {container_name}...", style="bold yellow")
+    used_port = postgres.start_container(pg_password)
+    console.print(f"PostgreSQL is now running on port {used_port}.", style="bold green")
 
-        persist_data = questionary.select("Do you want to ensure data persistence across container restarts?", choices=["Yes", "No"]).ask()
-        if persist_data == 'Yes':
-            postgres.ensure_data_persistence(pg_password)
+    console.print("Waiting for PostgreSQL to be ready...", style="bold yellow")
+    postgres.wait_for_ready()
+    postgres.setup_database(project_name)
 
-        console.print("Setup completed! PostgreSQL is running with the Cube extension installed.", style="bold green")
+    persist_data = questionary.select("Do you want to ensure data persistence across container restarts?", choices=["Yes", "No"]).ask()
+    if persist_data == 'Yes':
+        postgres.ensure_data_persistence(pg_password)
 
-        pgadmin_email = questionary.text("Enter an email for pgAdmin:").ask()
-        pgadmin_password = questionary.password("Enter a password for pgAdmin:").ask()
+    used_port = postgres.start_container(pg_password)
+    console.print(f"PostgreSQL is now running on port {used_port}.", style="bold green")
 
-        pgadmin = PgAdminManager()
-        if pgadmin.container_exists():
-            console.print("pgAdmin container already exists. Stopping and removing...", style="bold yellow")
-            pgadmin.remove_container()
-
-        console.print("Starting pgAdmin container...", style="bold yellow")
-        pgadmin.start_container(pgadmin_email, pgadmin_password)
 
     pgadmin_email = questionary.text("Enter an email for pgAdmin:").ask()
     pgadmin_password = questionary.password("Enter a password for pgAdmin:").ask()
 
-    pgadmin = PgAdminManager(project_name)
+    pgadmin = PgAdminManager()
     if pgadmin.container_exists():
-        console.print(f"{pgadmin.container_name} container already exists. Stopping and removing...", style="bold yellow")
+        console.print("pgAdmin container already exists. Stopping and removing...", style="bold yellow")
         pgadmin.remove_container()
 
-    console.print(f"Starting {pgadmin.container_name} container...", style="bold yellow")
-    pgadmin_port = pgadmin.start_container(pgadmin_email, pgadmin_password)
+    console.print("Starting pgAdmin container...", style="bold yellow")
+    pgadmin.start_container(pgadmin_email, pgadmin_password)
 
-    console.print(Panel.fit(f"pgAdmin is now running on port {pgadmin_port}. Access it at http://localhost:{pgadmin_port} using the email and password provided.", style="bold blue"))
+    console.print(f"pgAdmin is now running. Access it at http://localhost using the email and password provided.", style="bold green")
+    console.print(Panel.fit("Thank you for using our setup tool! See you next time!", style="bold blue"))
 
 def main():
     parser = argparse.ArgumentParser(description='RunDBFast command-line tool.')
