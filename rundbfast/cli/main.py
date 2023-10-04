@@ -27,7 +27,8 @@ def setup_meta(args):
     else:
         print_error("Failed to start the PostgreSQL database.")
 
-    initialize_pgadmin(db_name)
+    pgadmin, pgadmin_email = initialize_pgadmin(db_name)
+    pgadmin.add_server('RunDBFast Meta Server', db_name, pg_password, pgadmin_email)
 
 
 def setup(args):
