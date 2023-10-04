@@ -1,70 +1,34 @@
 import argparse
-from .manager import DockerManager, PostgreSQLManager, PgAdminManager
-from rich.console import Console
-from rich.panel import Panel
-from rich.progress import Progress
-import questionary
-
-console = Console()
+from .flow.user_input import get_project_name, get_postgres_password, get_persistence_choice, get_pgadmin_credentials
+from .flow.initializers import initialize_docker, initialize_postgresql, initialize_pgadmin
+from .flow.ui import print_message
 
 def setup(args):
-    project_name = questionary.text("Enter your project name:").ask()
+    # Get project name
+    project_name = get_project_name()
+    print_message(f"Welcome to RunDBFast, setting up for {project_name}!", style="bold blue")
 
-    welcome_message = Panel.fit(f"Welcome to RunDBFast, setting up for {project_name}!", style="bold blue")
-    console.print(welcome_message)
+    # Initialize Docker
+    docker = initialize_docker()
 
-    docker = DockerManager()
-    if not docker.is_installed():
-        with Progress() as progress:
-            task = progress.add_task("[cyan]Installing Docker...", total=100)
-            docker.install()
-            while not progress.finished:
-                progress.update(task, advance=20)
-                time.sleep(0.5)
-        console.print("Docker installed successfully!", style="bold green")
-    else:
-        console.print("Docker is already installed.", style="bold blue")
+    # Initialize PostgreSQL
+    pg_password = get_postgres_password()
+    postgres = initialize_postgresql(docker, project_name, pg_password)
 
-    console.print("Pulling PostgreSQL image...", style="bold yellow")
-    docker.pull_image("postgres:latest")
-
-    pg_password = questionary.password("Enter a secure password for PostgreSQL:").ask()
-
-    container_name = f"{project_name}-postgres"
-    if docker.container_exists(container_name):
-        console.print(f"Container with name {container_name} already exists. Stopping and removing...", style="bold yellow")
-        docker.remove_container(container_name)
-
-    postgres = PostgreSQLManager(container_name)
-    console.print(f"Starting container {container_name}...", style="bold yellow")
-    used_port = postgres.start_container(pg_password)
-    console.print(f"PostgreSQL is now running on port {used_port}.", style="bold green")
-
-    console.print("Waiting for PostgreSQL to be ready...", style="bold yellow")
-    postgres.wait_for_ready()
-    postgres.setup_database(project_name)
-
-    persist_data = questionary.select("Do you want to ensure data persistence across container restarts?", choices=["Yes", "No"]).ask()
+    # Check for data persistence
+    persist_data = get_persistence_choice()
     if persist_data == 'Yes':
         postgres.ensure_data_persistence(pg_password)
+        postgres.start_container(pg_password)
+        print_message(f"PostgreSQL is now running with data persistence enabled.", style="bold green")
 
-    used_port = postgres.start_container(pg_password)
-    console.print(f"PostgreSQL is now running on port {used_port}.", style="bold green")
-
-
-    pgadmin_email = questionary.text("Enter an email for pgAdmin:").ask()
-    pgadmin_password = questionary.password("Enter a password for pgAdmin:").ask()
-
-    pgadmin = PgAdminManager(project_name)
-    if pgadmin.container_exists():
-        console.print("pgAdmin container already exists. Stopping and removing...", style="bold yellow")
-        pgadmin.remove_container()
-
-    console.print("Starting pgAdmin container...", style="bold yellow")
+    # Initialize pgAdmin
+    pgadmin_email, pgadmin_password = get_pgadmin_credentials()
+    pgadmin = initialize_pgadmin(project_name)
     pgadmin.start_container(pgadmin_email, pgadmin_password)
+    print_message(f"pgAdmin is now running. Access it at http://localhost using the provided credentials.", style="bold green")
 
-    console.print(f"pgAdmin is now running. Access it at http://localhost using the email and password provided.", style="bold green")
-    console.print(Panel.fit("Thank you for using our setup tool! See you next time!", style="bold blue"))
+    print_message("Thank you for using our setup tool! See you next time!", style="bold blue")
 
 def main():
     parser = argparse.ArgumentParser(description='RunDBFast command-line tool.')
