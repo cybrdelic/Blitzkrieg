@@ -49,17 +49,23 @@ def initialize_postgresql(docker, project_name):
 def initialize_pgadmin(project_name):
     print_header("PgAdmin Initialization")
     pgadmin = PgAdminManager(project_name)
-    if pgadmin.container_exists():
-        print_warning("pgAdmin container already exists. Stopping and removing...")
-        pgadmin.remove_container()
-
-    pgadmin_email, pgadmin_password = get_pgadmin_credentials()
-    print_message("Starting pgAdmin container...")
-    pgadmin.start_container(pgadmin_email, pgadmin_password)
     docker = DockerManager()
-    if wait_for_container(docker, f"{project_name}-PgAdmin"):
-        print_success(f"pgAdmin is now running. Access it at http://localhost using the email and password provided.")
-    else:
-        print_error("Failed to start the pgAdmin container.")
+    pgadmin_email = None  # Initialize to None
 
-    return pgadmin
+    if pgadmin.container_exists():
+        if pgadmin.is_container_running():
+            print_message("pgAdmin container is already running.")
+        else:
+            print_warning("pgAdmin container exists but is not running. Restarting...")
+            docker.runner.run_command(f"docker start {pgadmin.container_name}")
+    else:
+        pgadmin_email, pgadmin_password = get_pgadmin_credentials()
+        print_message("Starting pgAdmin container...")
+        pgadmin_port = pgadmin.start_container(pgadmin_email, pgadmin_password)
+
+        if wait_for_container(docker, f"{project_name}-PgAdmin"):
+            print_success(f"pgAdmin is now running. Access it at http://localhost:{pgadmin_port} using the email and password provided.")
+        else:
+            print_error("Failed to start the pgAdmin container.")
+
+    return pgadmin, pgadmin_email

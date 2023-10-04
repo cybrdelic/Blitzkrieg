@@ -115,22 +115,25 @@ class PgAdminManager(ContainerManager):
             self.runner.run_command(f"docker stop {self.container_name}")
             self.runner.run_command(f"docker rm {self.container_name}")
 
+
             time.sleep(5)  # Give Docker a few seconds to free up the name
     def add_server(self, server_name, db_name, password, pgadmin_email):
         try:
-            server_config = self._generate_server_config(server_name, db_name, password)
-
-            existing_servers = self._check_and_get_existing_servers()
-            if existing_servers == "exists":
+            self._install_flask_if_needed()
+            # Check if the servers.json already exists in the container
+            if self._servers_config_exists():
                 choice = show_choices("servers.json already exists in the container. Overwrite?", ["Yes", "No"])
                 if choice == "No":
                     print_warning("Server addition aborted by user.")
                     return
 
+            # Generate server configuration
+            server_config = self._generate_server_config(server_name, db_name, password)
+
+            # Write the configuration to a temporary file
             temp_file_path = self._write_server_config_to_temp_file(server_config)
 
-            self._install_flask_if_needed()
-
+            # Transfer the configuration to the container and execute the setup
             self._execute_add_server_command(temp_file_path, pgadmin_email)
 
             print_success(f"Server '{server_name}' added to pgAdmin successfully!")
@@ -142,6 +145,11 @@ class PgAdminManager(ContainerManager):
         finally:
             if os.path.exists(temp_file_path):
                 os.remove(temp_file_path)
+
+    def _servers_config_exists(self):
+        check_cmd = f"docker exec {self.container_name} sh -c 'if [ -f /pgadmin4/servers.json ]; then echo exists; else echo not_exists; fi'"
+        result = self.runner.run_command(check_cmd).strip()
+        return result == "exists"
 
     def _generate_server_config(self, server_name, db_name, password):
         return {
@@ -162,7 +170,12 @@ class PgAdminManager(ContainerManager):
 
     def _check_and_get_existing_servers(self):
         check_cmd = f"docker exec {self.container_name} sh -c 'if [ -f /pgadmin4/servers.json ]; then echo exists; else echo not_exists; fi'"
-        return self.runner.run_command(check_cmd).strip()
+        result = self.runner.run_command(check_cmd).strip()
+        print(f"Result from _check_and_get_existing_servers: {result}")
+        if result not in ["exists", "not_exists"]:
+            raise Exception(f"Unexpected result from _check_and_get_existing_servers: {result}")
+        return result
+
 
     def _write_server_config_to_temp_file(self, server_config):
         with tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".json") as f:
@@ -170,11 +183,17 @@ class PgAdminManager(ContainerManager):
             return f.name
 
     def _install_flask_if_needed(self):
-        check_flask_cmd = f"docker exec {self.container_name} pip list | grep Flask"
-        flask_installed = self.runner.run_command(check_flask_cmd).strip()
-        if not flask_installed:
-            install_flask_cmd = f"docker exec {self.container_name} pip install Flask"
-            self.runner.run_command(install_flask_cmd)
+        try:
+            # Try to list Flask in installed packages
+            cmd = f"docker exec {self.container_name} pip list | grep Flask"
+            output = self.runner.run_command(cmd).strip()
+
+            # If Flask is not listed, install it
+            if not output:
+                install_cmd = f"docker exec {self.container_name} pip install Flask"
+                self.runner.run_command(install_cmd)
+        except subprocess.CalledProcessError as cpe:
+            print_error(f"Failed to check/install Flask: {str(cpe)}")
 
     def _execute_add_server_command(self, temp_file_path, pgadmin_email):
         cmd = f"docker cp {temp_file_path} {self.container_name}:/pgadmin4/servers.json && docker exec {self.container_name} python3 /pgadmin4/setup.py --load-servers /pgadmin4/servers.json --user {pgadmin_email}"
