@@ -8,6 +8,8 @@ import questionary
 console = Console()
 
 def setup(args):
+    project_name = questionary.text("Enter your project name:").ask()
+
     if args.database == 'postgres':
         welcome_message = Panel.fit("Welcome to RunDBFast!", style="bold blue")
         console.print(welcome_message)
