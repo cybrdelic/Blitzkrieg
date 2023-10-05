@@ -10,6 +10,7 @@ from ..cli.ui import print_warning, print_message, show_choices, print_success, 
 import tempfile
 import json
 console = Console()
+from .helpers.pgadmin_helper import add_server as add_server_helper
 
 
 class DockerManager:
@@ -98,13 +99,21 @@ class PgAdminManager(ContainerManager):
         super().__init__(f"{project_name}-PgAdmin")
 
     def start_container(self, email, password):
-        port = self.runner.find_available_port(80)
-        self.runner.run_command(f"docker run --name {self.container_name} -p {port}:80 \
-            -e 'PGADMIN_DEFAULT_EMAIL={email}' \
-            -e 'PGADMIN_DEFAULT_PASSWORD={password}' \
-            -d dpage/pgadmin4")
-        return port
+        # Check if the container already exists
+        if self.container_exists():
+            print_warning(f"Container with name {self.container_name} already exists. Stopping and removing...")
+            self.remove_container()
 
+        port = self.runner.find_available_port(80)
+        try:
+            self.runner.run_command(f"docker run --name {self.container_name} -p {port}:80 \
+                -e 'PGADMIN_DEFAULT_EMAIL={email}' \
+                -e 'PGADMIN_DEFAULT_PASSWORD={password}' \
+                -d my-custom-pgadmin")
+            return port
+        except subprocess.CalledProcessError as cpe:
+            print_error(f"Failed to start the container: {str(cpe)}")
+            raise
     def container_exists(self):
         existing_containers = self.runner.run_command(f"docker ps -a -q -f name={self.container_name}")
         return bool(existing_containers)
@@ -117,48 +126,22 @@ class PgAdminManager(ContainerManager):
 
 
             time.sleep(5)  # Give Docker a few seconds to free up the name
-    def add_server(self, server_name, db_name, password, pgadmin_email):
-        try:
-            self._install_flask_if_needed()
-            # Check if the servers.json already exists in the container
-            if self._servers_config_exists():
-                choice = show_choices("servers.json already exists in the container. Overwrite?", ["Yes", "No"])
-                if choice == "No":
-                    print_warning("Server addition aborted by user.")
-                    return
-
-            # Generate server configuration
-            server_config = self._generate_server_config(server_name, db_name, password)
-
-            # Write the configuration to a temporary file
-            temp_file_path = self._write_server_config_to_temp_file(server_config)
-
-            # Transfer the configuration to the container and execute the setup
-            self._execute_add_server_command(temp_file_path, pgadmin_email)
-
-            print_success(f"Server '{server_name}' added to pgAdmin successfully!")
-
-        except subprocess.CalledProcessError as cpe:
-            print_error(f"Command execution failed: {str(cpe)}")
-        except Exception as e:
-            print_error(f"Error adding server: {str(e)}")
-        finally:
-            if os.path.exists(temp_file_path):
-                os.remove(temp_file_path)
+    def add_server(self, server_name, db_name, password, pgadmin_email, port):
+        add_server_helper(self, server_name, db_name, password, pgadmin_email, port)
 
     def _servers_config_exists(self):
         check_cmd = f"docker exec {self.container_name} sh -c 'if [ -f /pgadmin4/servers.json ]; then echo exists; else echo not_exists; fi'"
         result = self.runner.run_command(check_cmd).strip()
         return result == "exists"
 
-    def _generate_server_config(self, server_name, db_name, password):
+    def _generate_server_config(self, server_name, db_name, password, port):
         return {
             "Servers": {
                 "1": {
                     "Name": server_name,
                     "Group": "Servers",
-                    "Host": "localhost",
-                    "Port": 5432,
+                    "Host": f"{db_name}-postgres",
+                    "Port": port,
                     "MaintenanceDB": db_name,
                     "Username": "postgres",
                     "Password": password,
@@ -182,19 +165,29 @@ class PgAdminManager(ContainerManager):
             json.dump(server_config, f)
             return f.name
 
-    def _install_flask_if_needed(self):
-        try:
-            # Try to list Flask in installed packages
-            cmd = f"docker exec {self.container_name} pip list | grep Flask"
-            output = self.runner.run_command(cmd).strip()
-
-            # If Flask is not listed, install it
-            if not output:
-                install_cmd = f"docker exec {self.container_name} pip install Flask"
-                self.runner.run_command(install_cmd)
-        except subprocess.CalledProcessError as cpe:
-            print_error(f"Failed to check/install Flask: {str(cpe)}")
 
     def _execute_add_server_command(self, temp_file_path, pgadmin_email):
-        cmd = f"docker cp {temp_file_path} {self.container_name}:/pgadmin4/servers.json && docker exec {self.container_name} python3 /pgadmin4/setup.py --load-servers /pgadmin4/servers.json --user {pgadmin_email}"
-        self.runner.run_command(cmd)
+        # Step 1: Copy the configuration file to the container
+        copy_cmd = f"docker cp {temp_file_path} {self.container_name}:/pgadmin4/servers.json"
+        self.runner.run_command(copy_cmd)
+
+        # Step 2: Change the permissions of the configuration file inside the container
+        chmod_cmd = f"docker exec -u root {self.container_name} chmod 644 /pgadmin4/servers.json"
+        self.runner.run_command(chmod_cmd)
+
+        # Step 3: Execute the setup
+        setup_cmd = (f"docker exec {self.container_name} /venv/bin/python3 /pgadmin4/setup.py "
+                    f"--load-servers /pgadmin4/servers.json --user {pgadmin_email}")
+        self.runner.run_command(setup_cmd)
+
+    def _execute_transfer_command(self, temp_file_path):
+        """
+        Transfers the server configuration from the temporary file to the container and sets its permissions.
+        """
+        # Step 1: Copy the configuration file to the container
+        copy_cmd = f"docker cp {temp_file_path} {self.container_name}:/pgadmin4/servers.json"
+        self.runner.run_command(copy_cmd)
+
+        # Step 2: Change the permissions of the configuration file inside the container
+        chmod_cmd = f"docker exec -u root {self.container_name} chmod 644 /pgadmin4/servers.json"
+        self.runner.run_command(chmod_cmd)

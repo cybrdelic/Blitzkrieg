@@ -17,7 +17,7 @@ def setup_meta(args):
     print_label(f"Setting up meta database for RunDBFast")
 
     docker = initialize_docker()
-    postgres, pg_password = initialize_postgresql(docker, db_name)
+    postgres, pg_password, pg_port = initialize_postgresql(docker, db_name)
     postgres.ensure_data_persistence(pg_password)
     postgres.start_container(pg_password)
 
@@ -28,7 +28,7 @@ def setup_meta(args):
         print_error("Failed to start the PostgreSQL database.")
 
     pgadmin, pgadmin_email = initialize_pgadmin(db_name)
-    pgadmin.add_server('RunDBFast Meta Server', db_name, pg_password, pgadmin_email)
+    pgadmin.add_server('RunDBFast Meta Server', db_name, pg_password, pgadmin_email, pg_port)
 
 
 def setup(args):
