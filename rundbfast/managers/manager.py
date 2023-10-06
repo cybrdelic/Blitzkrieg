@@ -94,6 +94,10 @@ class PostgreSQLManager(ContainerManager):
         print_message("Setting up Docker volume for data persistence...")
         # Add any extensions or initial setup for the meta database here.
 
+    def execute_sql(self, db_name, sql):
+        self.runner.run_command(f"docker exec {self.container_name} psql -U postgres -d {db_name} -c \"{sql}\"")
+
+
 class PgAdminManager(ContainerManager):
     def __init__(self, project_name):
         super().__init__(f"{project_name}-PgAdmin")

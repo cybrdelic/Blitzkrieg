@@ -11,6 +11,7 @@ from .ui import (
     print_error,
     print_cli_footer
 )
+from ..managers.helpers.metadb_helper import execute_initial_user_setup
 
 def setup_meta(args):
     db_name = 'meta'
@@ -29,6 +30,7 @@ def setup_meta(args):
 
     pgadmin, pgadmin_email = initialize_pgadmin(db_name)
     pgadmin.add_server('RunDBFast Meta Server', db_name, pg_password, pgadmin_email, pg_port)
+    execute_initial_user_setup(db_name, postgres, email=pgadmin_email, password=pg_password)
 
 
 def setup(args):
