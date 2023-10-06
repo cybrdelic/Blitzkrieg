@@ -40,7 +40,7 @@ def setup(args):
     # Initialize Docker
     docker = initialize_docker()
 
-    postgres, pg_password = initialize_postgresql(docker, project_name)
+    postgres, pg_password, pg_port = initialize_postgresql(docker, project_name)
 
     # Check for data persistence
     persist_data = get_persistence_choice()
