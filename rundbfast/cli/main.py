@@ -28,7 +28,7 @@ def setup_meta(args):
     else:
         print_error("Failed to start the PostgreSQL database.")
 
-    pgadmin, pgadmin_email = initialize_pgadmin(db_name)
+    pgadmin, pgadmin_email = initialize_pgadmin(db_name, postgres)
     pgadmin.add_server('RunDBFast Meta Server', db_name, pg_password, pgadmin_email, pg_port)
     execute_initial_user_setup(db_name, postgres, email=pgadmin_email, password=pg_password)
 
@@ -52,7 +52,7 @@ def setup(args):
         postgres.start_container(pg_password)
         print_success(f"PostgreSQL is now running with data persistence enabled.")
 
-    initialize_pgadmin(project_name)
+    initialize_pgadmin(project_name, postgres)
 
     print_cli_footer()
 

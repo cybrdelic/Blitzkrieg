@@ -46,11 +46,11 @@ def initialize_postgresql(docker, project_name):
 
     return postgres, pg_password, used_port
 
-def initialize_pgadmin(project_name):
+def initialize_pgadmin(project_name, postgres):
     print_header("PgAdmin Initialization")
     pgadmin = PgAdminManager(project_name)
     docker = DockerManager()
-    pgadmin_email, pgadmin_password = get_pgadmin_credentials()
+    pgadmin_email, pgadmin_password = get_pgadmin_credentials(postgres, f"{project_name}-postgres")
     print_message("Starting pgAdmin container...")
     pgadmin_port = pgadmin.start_container(pgadmin_email, pgadmin_password)
 

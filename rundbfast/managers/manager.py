@@ -97,6 +97,22 @@ class PostgreSQLManager(ContainerManager):
     def execute_sql(self, db_name, sql):
         self.runner.run_command(f"docker exec {self.container_name} psql -U postgres -d {db_name} -c \"{sql}\"")
 
+    def admin_user_exists(self, db_name):
+        try:
+            result = self.execute_sql(db_name, "SELECT COUNT(*) FROM users WHERE username LIKE '%-ADMIN';")
+            return int(result) > 0
+        except:
+            return False
+
+    def get_admin_email(self, db_name):
+        try:
+            email = self.execute_sql(db_name, "SELECT email FROM users WHERE username LIKE '%-ADMIN' LIMIT 1;")
+            return email.strip()
+        except:
+            return None
+
+
+
 
 class PgAdminManager(ContainerManager):
     def __init__(self, project_name):
