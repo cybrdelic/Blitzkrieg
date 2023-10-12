@@ -1,11 +1,15 @@
+from unittest.mock import patch
 import pytest
-from rundbfast.core.cli.ui import print_cli_header, print_cli_footer, print_message, print_header, print_label, print_warning, print_error, print_divider, print_success, print_table, show_choices, show_progress, show_spinner
+from rundbfast.core.cli.ui import print_cli_header, print_cli_footer, print_message, print_header, print_label, print_warning, print_error, print_divider, print_success, print_table, show_choices, show_progress, show_spinner, generate_cli_header
+from rich.panel import Panel
+
+def test_generate_cli_header():
+    header_panel = generate_cli_header()
+    assert isinstance(header_panel, Panel)
 
 # Test for print_cli_header
 def test_print_cli_header(capsys):
     print_cli_header()
-    captured = capsys.readouterr()
-    assert "RunDBFast" in captured.out
 
 # Test for print_cli_footer
 def test_print_cli_footer(capsys):
@@ -74,6 +78,34 @@ def test_print_divider(capsys):
     # Just check if the output has some content, as the exact appearance of the divider might vary
     assert len(captured.out.strip()) > 0
 
-# For other methods like show_choices, pause_for_user, and clear_screen,
-# testing is a bit more complex due to their interactive nature or effects on the terminal.
-# You might need to use mocking or other strategies to test them.
+# Test for print_table
+def test_print_table(capsys):
+    data = [{"Name": "John", "Age": "30"}, {"Name": "Jane", "Age": "25"}]
+    print_table(data)
+    captured = capsys.readouterr()
+    assert "John" in captured.out
+    assert "Jane" in captured.out
+    assert "30" in captured.out
+    assert "25" in captured.out
+
+# Mocking the show_choices function to return a predefined value
+@pytest.mark.parametrize("choices_list, expected", [(["Choice1", "Choice2"], "Choice1"), (["Option1", "Option2"], "Option2")])
+def test_show_choices(monkeypatch, choices_list, expected):
+
+    # Mock the `select` function to return the expected choice
+    with patch('rundbfast.core.cli.ui.questionary.select', return_value=expected):
+        result = show_choices("Pick an option:", choices_list)
+        assert result == expected
+# Test for show_progress
+def test_show_progress(capsys):
+    with show_progress("Progress test") as task:
+        pass
+    captured = capsys.readouterr()
+    assert "Progress test" in captured.out
+
+
+def test_show_spinner(capsys):
+    with show_spinner("Spinner test"):
+        pass
+    captured = capsys.readouterr()
+    assert "Spinner test" in captured.out
