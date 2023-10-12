@@ -11,7 +11,7 @@ from rundbfast.cli.ui import (
     print_error,
     print_cli_footer
 )
-from rundbfast.managers.helpers.metadb_helper import execute_initial_user_setup
+from ..managers.helpers.metadb_helper import execute_initial_user_setup
 
 def setup_meta(args):
     db_name = 'meta'
