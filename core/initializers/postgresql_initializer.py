@@ -1,17 +1,19 @@
 # rundbfast/managers/initializer/postgresql_initializer.py
 
 from rundbfast.shared.utils import get_postgres_password
+from rundbfast.config import load_configurations
 
 from rundbfast.core.cli.ui import print_error, print_header, print_message, print_success, print_warning, show_progress
-from rundbfast.core.managers.initializers import DOCKER_IMAGE_POSTGRES
 from rundbfast.core.managers.postgres_manager import PostgreSQLManager
 from rundbfast.core.shared.utils import wait_for_container
+
+config = load_configurations()
 
 def initialize_postgresql(docker, project_name):
     print_header("PostgreSQL Initialization")
 
     pg_password = get_postgres_password()
-    docker_image = DOCKER_IMAGE_POSTGRES
+    docker_image = config["DOCKER_IMAGE_POSTGRES"]
 
     _pull_postgres_image(docker, docker_image)
     container_name, volume_name = _prepare_postgres_container(docker, project_name, pg_password)
