@@ -46,7 +46,8 @@ def show_progress(task_name):
             SpinnerColumn(),
             transient=True
     ) as progress:
-        task = progress.add_task(task_name, total=100)
+        task_id = progress.add_task(task_name, total=100)
+        task = progress.tasks[task_id]  # Get the task object using task_id
         yield task
 
 
