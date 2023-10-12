@@ -13,48 +13,24 @@ from rundbfast.cli.ui import (
 )
 from rundbfast.managers.helpers.metadb_helper import execute_initial_user_setup
 
+from rundbfast.core.managers.postgres_manager import PostgreSQLManager
+
 def setup_meta(args):
-    db_name = 'meta'
     print_label(f"Setting up meta database for RunDBFast")
-
     docker = initialize_docker()
-    postgres, pg_password, pg_port = initialize_postgresql(docker, db_name)
-    postgres.ensure_data_persistence(pg_password)
-    postgres.start_container(pg_password)
-
-    # Wait for the PostgreSQL container to be running
-    if wait_for_container(docker, f"{db_name}-postgres"):
-        print_success(f"RunDbFast PostgreSQL database is now running with data persistence enabled.")
-    else:
-        print_error("Failed to start the PostgreSQL database.")
-
-    pgadmin, pgadmin_email = initialize_pgadmin(db_name, postgres)
-    pgadmin.add_server('RunDBFast Meta Server', db_name, pg_password, pgadmin_email, pg_port)
-    execute_initial_user_setup(db_name, postgres, email=pgadmin_email, password=pg_password)
-
+    postgres = PostgreSQLManager()
+    postgres.setup_meta_database(docker)
 
 def setup(args):
-    # Get project name
     project_name = get_project_name()
     print_label(f"Setting up for project: {project_name}")
     pause_for_user()
-
-    # Initialize Docker
     docker = initialize_docker()
-
-    postgres, pg_password, pg_port = initialize_postgresql(docker, project_name)
-
-    # Check for data persistence
-    persist_data = get_persistence_choice()
-    if persist_data == 'Yes':
-        print_label("Ensuring data persistence...")
-        postgres.ensure_data_persistence(pg_password)
-        postgres.start_container(pg_password)
-        print_success(f"PostgreSQL is now running with data persistence enabled.")
-
+    postgres = PostgreSQLManager()
+    postgres.initialize_with_persistence_check(project_name)
     initialize_pgadmin(project_name, postgres)
-
     print_cli_footer()
+
 
 def main():
     parser = argparse.ArgumentParser(description='RunDBFast command-line tool.')

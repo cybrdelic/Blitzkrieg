@@ -1,6 +1,9 @@
 import time
-from rundbfast.core.cli.ui import print_message, print_warning
+from rundbfast.core.cli.ui import print_label, print_message, print_success, print_warning
+from rundbfast.core.cli.user_input import get_persistence_choice
 from rundbfast.core.managers.container_manager import ContainerManager
+from rundbfast.core.managers.helpers.metadb_helper import execute_initial_user_setup
+from rundbfast.core.managers.initializers import initialize_pgadmin
 
 
 class PostgreSQLManager(ContainerManager):
@@ -70,3 +73,25 @@ class PostgreSQLManager(ContainerManager):
             return email.strip()
         except:
             return None
+
+    def initialize_and_start(self, db_name, password, volume_name=None):
+        if self.container_exists():
+            self.remove_container()
+        self.ensure_data_persistence(password)
+        port = self.start_container(password, volume_name)
+        if not self.wait_for_ready():
+            raise Exception("Failed to initialize PostgreSQL container.")
+        return port
+
+    def setup_meta_database(self, docker, db_name='meta'):
+        pg_password = self.initialize_and_start(db_name, 'password')  # Choose an appropriate password or get it from the user
+        pgadmin, pgadmin_email = initialize_pgadmin(db_name, self)
+        pgadmin.add_server('RunDBFast Meta Server', db_name, pg_password, pgadmin_email, self.port)
+        execute_initial_user_setup(db_name, self, email=pgadmin_email, password=pg_password)
+
+    def initialize_with_persistence_check(self, project_name):
+        persist_data = get_persistence_choice()
+        if persist_data == 'Yes':
+            print_label("Ensuring data persistence...")
+            self.initialize_and_start(project_name, 'password')  # Choose an appropriate password or get it from the user
+            print_success(f"PostgreSQL is now running with data persistence enabled.")
