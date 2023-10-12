@@ -43,6 +43,7 @@ def show_progress(task_name):
     ) as progress:
         task = progress.add_task(task_name, total=100)
         yield task
+    
 
 @contextmanager
 def show_spinner(message):

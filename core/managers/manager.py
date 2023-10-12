@@ -27,7 +27,19 @@ class DockerManager:
         self.runner.run_command("sudo systemctl enable docker")
 
     def pull_image(self, image):
-        self.runner.run_command(f"docker pull {image}")
+        for line in self.runner.run_command_realtime(f"docker pull {image}"):
+            # Extract progress details from the Docker CLI's response
+            if "Pulling from" in line:
+                continue  # This is just an informational line, not progress
+            try:
+                parsed_data = json.loads(line)
+                if 'progressDetail' in parsed_data and 'total' in parsed_data['progressDetail']:
+                    current = parsed_data['progressDetail'].get('current', 0)
+                    total = parsed_data['progressDetail']['total']
+                    percentage = (current / total) * 100
+                    yield percentage
+            except json.JSONDecodeError:
+                pass  # Some lines may not be JSON, just ignore them
 
     def container_exists(self, container_name):
         existing_containers = self.runner.run_command(f"docker ps -a -q -f name={container_name}")

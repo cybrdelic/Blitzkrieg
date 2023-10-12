@@ -26,12 +26,13 @@ def initialize_postgresql(docker, project_name):
     # Get password for PostgreSQL
     pg_password = get_postgres_password()
 
-    # Ensure Docker has the PostgreSQL image
+    # Adjust the image pulling process in your main code
     if not docker.image_exists(DOCKER_IMAGE_POSTGRES):
         with show_progress(f"Pulling {DOCKER_IMAGE_POSTGRES}...") as progress:
-            docker.pull_image(DOCKER_IMAGE_POSTGRES)
-            progress.update(100)
+            for percentage in docker.pull_image(DOCKER_IMAGE_POSTGRES):
+                progress.completed = percentage
             print_success(f"{DOCKER_IMAGE_POSTGRES} pulled successfully!")
+
 
     # Handle existing containers
     container_name = f"{project_name}-postgres"
