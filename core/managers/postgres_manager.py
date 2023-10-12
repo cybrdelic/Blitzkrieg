@@ -3,6 +3,7 @@ from rundbfast.core.cli.ui import print_label, print_message, print_success, pri
 from rundbfast.core.managers.container_manager import ContainerManager
 from rundbfast.core.managers.helpers.metadb_helper import execute_initial_user_setup
 from rundbfast.core.managers.initializers import initialize_pgadmin
+import logging
 
 # Constants
 DEFAULT_PORT = 5432
@@ -11,23 +12,31 @@ SLEEP_INTERVAL = 2
 WAIT_AFTER_CONTAINER_START = 10
 WAIT_AFTER_CONTAINER_REMOVE = 5
 
+# Setting up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 class PostgreSQLManager(ContainerManager):
     def __init__(self, runner):
         super().__init__(runner)
 
     def start_container(self, password, volume_name=None):
+        """Starts a PostgreSQL container."""
         port = self.runner.find_available_port(DEFAULT_PORT)
         volume_option = f"-v {volume_name}:/var/lib/postgresql/data" if volume_name else ""
         self.runner.run_command(f"docker run --name {self.container_name} -e POSTGRES_PASSWORD={password} {volume_option} -p {port}:{port} -d postgres:latest")
+        logger.info(f"Started PostgreSQL container on port {port}")
         time.sleep(WAIT_AFTER_CONTAINER_START)
         return port
 
     def is_ready(self):
+        """Checks if the PostgreSQL is ready to accept connections."""
         try:
             output = self.runner.run_command(f"docker exec {self.container_name} pg_isready")
             return "accepting connections" in output
         except Exception as e:
-            raise RuntimeError(f"Error checking PostgreSQL readiness: {str(e)}")
+            logger.error(f"Error checking PostgreSQL readiness: {str(e)}")
+            raise
 
     def wait_for_ready(self):
         start_time = time.time()
@@ -55,10 +64,17 @@ class PostgreSQLManager(ContainerManager):
             self.runner.run_command(f"docker rm {self.container_name}")
             time.sleep(WAIT_AFTER_CONTAINER_REMOVE)
 
-    def initialize_and_start(self, db_name, password, volume_name=None):
+    def initialize(self, db_name, password, volume_name=None):
+        """Initialize the container setup."""
         if self.container_exists():
             self.remove_container()
         port = self.start_container(password, volume_name)
+        return port
+
+    def start_with_check(self, db_name, password, volume_name=None):
+        """Initialize and start the PostgreSQL container, and wait for it to be ready."""
+        port = self.initialize(db_name, password, volume_name)
         if not self.wait_for_ready():
             raise Exception("Failed to initialize PostgreSQL container.")
+        print_success("PostgreSQL container initialized successfully!")
         return port
