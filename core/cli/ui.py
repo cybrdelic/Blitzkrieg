@@ -16,10 +16,15 @@ SUCCESS_COLOR = "#00FF00"  # This is the hex code for red.
 WARNING_COLOR = "bold yellow"
 ERROR_COLOR = "#FF0000"
 
+def generate_cli_header():
+    """Generates a CLI header string."""
+    title_text = pyfiglet.figlet_format("RunDBFast", font="slant")
+    return Panel("[bold bright_yellow]" + title_text + "[/bold bright_yellow]", expand=False)
+
 def print_cli_header():
     """Prints a CLI header."""
-    title_text = pyfiglet.figlet_format("RunDBFast", font="slant")
-    console.print(Panel("[bold bright_yellow]" + title_text + "[/bold bright_yellow]", expand=False))
+    console.print(generate_cli_header())
+
 
 def print_cli_footer():
     """Prints a CLI footer."""
@@ -41,8 +46,10 @@ def show_progress(task_name):
             SpinnerColumn(),
             transient=True
     ) as progress:
-        task = progress.add_task(task_name, total=100)
+        task_id = progress.add_task(task_name, total=100)
+        task = progress.tasks[task_id]  # Get the task object using task_id
         yield task
+
 
 @contextmanager
 def show_spinner(message):

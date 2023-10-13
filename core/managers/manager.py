@@ -3,14 +3,14 @@ import shutil
 import subprocess
 import time
 from rich.console import Console
-from .container_manager import ContainerManager
-from ..shared.command_runner import CommandRunner
+from rundbfast.managers.container_manager import ContainerManager
+from rundbfast.shared.command_runner import CommandRunner
 import socket
-from ..cli.ui import print_warning, print_message, show_choices, print_success, print_error
+from rundbfast.cli.ui import print_warning, print_message, show_choices, print_success, print_error
 import tempfile
 import json
 console = Console()
-from .helpers.pgadmin_helper import add_server as add_server_helper
+from rundbfast.managers.helpers.pgadmin_helper import add_server as add_server_helper
 
 
 class DockerManager:
@@ -27,7 +27,19 @@ class DockerManager:
         self.runner.run_command("sudo systemctl enable docker")
 
     def pull_image(self, image):
-        self.runner.run_command(f"docker pull {image}")
+        for line in self.runner.run_command_realtime(f"docker pull {image}"):
+            # Extract progress details from the Docker CLI's response
+            if "Pulling from" in line:
+                continue  # This is just an informational line, not progress
+            try:
+                parsed_data = json.loads(line)
+                if 'progressDetail' in parsed_data and 'total' in parsed_data['progressDetail']:
+                    current = parsed_data['progressDetail'].get('current', 0)
+                    total = parsed_data['progressDetail']['total']
+                    percentage = (current / total) * 100
+                    yield percentage
+            except json.JSONDecodeError:
+                pass  # Some lines may not be JSON, just ignore them
 
     def container_exists(self, container_name):
         existing_containers = self.runner.run_command(f"docker ps -a -q -f name={container_name}")
@@ -45,12 +57,24 @@ class DockerManager:
         images = self.runner.run_command("docker images -q " + image_name)
         return bool(images)
 
+    def create_volume(self, volume_name):
+        self.runner.run_command(f"docker volume create {volume_name}")
+
+    def volume_exists(self, volume_name):
+        existing_volumes = self.runner.run_command(f"docker volume ls -q -f name={volume_name}")
+        return bool(existing_volumes)
+
+    def remove_volume(self, volume_name):
+        self.runner.run_command(f"docker volume rm {volume_name}")
+
 class PostgreSQLManager(ContainerManager):
-    def start_container(self, password):
+    def start_container(self, password, volume_name=None):
         port = self.runner.find_available_port(5432)
-        self.runner.run_command(f"docker run --name {self.container_name} -e POSTGRES_PASSWORD={password} -p {port}:{port} -d postgres:latest")
+        volume_option = f"-v {volume_name}:/var/lib/postgresql/data" if volume_name else ""
+        self.runner.run_command(f"docker run --name {self.container_name} -e POSTGRES_PASSWORD={password} {volume_option} -p {port}:{port} -d postgres:latest")
         time.sleep(10)  # Give Docker some time to initialize the container
         return port
+
     def is_ready(self):
         try:
             output = self.runner.run_command(f"docker exec {self.container_name} pg_isready")
@@ -93,6 +117,26 @@ class PostgreSQLManager(ContainerManager):
         self.remove_container()
         print_message("Setting up Docker volume for data persistence...")
         # Add any extensions or initial setup for the meta database here.
+
+    def execute_sql(self, db_name, sql):
+        self.runner.run_command(f"docker exec meta-postgres psql -U postgres -d meta -c \"{sql}\"")
+
+    def admin_user_exists(self, db_name):
+        try:
+            result = self.execute_sql(db_name, "SELECT COUNT(*) FROM users WHERE username LIKE '%-ADMIN';")
+            return int(result) > 0
+        except:
+            return False
+
+    def get_admin_email(self, db_name):
+        try:
+            email = self.execute_sql(db_name, "SELECT email FROM users WHERE username LIKE '%-ADMIN' LIMIT 1;")
+            return email.strip()
+        except:
+            return None
+
+
+
 
 class PgAdminManager(ContainerManager):
     def __init__(self, project_name):
