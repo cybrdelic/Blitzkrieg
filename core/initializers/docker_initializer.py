@@ -9,7 +9,7 @@ def initialize_docker():
     if not docker.is_installed():
         with show_progress("Installing Docker...") as progress:
             docker.install()
-            progress.update(100)
+            progress.completed = 100
             print_success("Docker installed successfully!")
     else:
         print_message("Docker is already installed.")
