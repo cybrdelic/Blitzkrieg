@@ -1,16 +1,24 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='rundbfast',
-    version='0.1',
+    name="RunDBFast",
+    version="0.1",
     packages=find_packages(),
     install_requires=[
         'rich',
-        'questionary'
+        'pyfiglet',
+        'questionary',
     ],
     entry_points={
         'console_scripts': [
-            'rundbfast = rundbfast.cli:main',
+            'rundbfast=rundbfast.cli.main:main',
         ],
     },
+    author="Alex Figueroa",
+    description="A tool to autonomously spin up dockerized PostgreSQL databases.",
+    license="MIT",
+    keywords="database postgresql docker automation",
+    url="https://github.com/your_github/rundbfast",  # GitHub repo link
+    long_description=open('README.md').read(),
+    long_description_content_type='text/markdown',
 )
