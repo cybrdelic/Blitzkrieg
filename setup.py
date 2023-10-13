@@ -11,7 +11,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'rundbfast=rundbfast.cli.main:main',
+            'rundbfast=core.cli.main:main',
         ],
     },
     author="Alex Figueroa",
