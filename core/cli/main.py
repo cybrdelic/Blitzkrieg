@@ -1,9 +1,10 @@
 import argparse
+from rundbfast.core.initializers.docker_initializer import initialize_docker
+from rundbfast.core.initializers.pgadmin_initializer import initialize_pgadmin
 
-from rundbfast.shared.utils import wait_for_container
-from rundbfast.cli.user_input import get_project_name, get_postgres_password, get_persistence_choice, get_pgadmin_credentials
-from rundbfast.managers.initializers import initialize_docker, initialize_postgresql, initialize_pgadmin
-from rundbfast.cli.ui import (
+from rundbfast.core.shared.utils import wait_for_container
+from rundbfast.core.cli.user_input import get_project_name
+from rundbfast.core.cli.ui import (
     print_success,
     pause_for_user,
     print_label,
@@ -11,7 +12,7 @@ from rundbfast.cli.ui import (
     print_error,
     print_cli_footer
 )
-from rundbfast.managers.helpers.metadb_helper import execute_initial_user_setup
+from rundbfast.core.managers.helpers.metadb_helper import execute_initial_user_setup
 
 from rundbfast.core.managers.postgres_manager import PostgreSQLManager
 
