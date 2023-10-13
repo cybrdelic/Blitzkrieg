@@ -1,4 +1,4 @@
-from rundbfast.cli.ui import print_header, print_error, print_success, show_spinner, pause_for_user
+from rundbfast.core.cli.ui import print_header, print_error, print_success, show_spinner, pause_for_user
 
 def execute_initial_user_setup(db_name, postgres, email, password):
     """Setup initial user tables and data."""

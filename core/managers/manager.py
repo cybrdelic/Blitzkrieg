@@ -3,14 +3,14 @@ import shutil
 import subprocess
 import time
 from rich.console import Console
-from rundbfast.managers.container_manager import ContainerManager
-from rundbfast.shared.command_runner import CommandRunner
+from rundbfast.core.managers.container_manager import ContainerManager
+from rundbfast.core.shared.command_runner import CommandRunner
 import socket
-from rundbfast.cli.ui import print_warning, print_message, show_choices, print_success, print_error
+from rundbfast.core.cli.ui import print_warning, print_message, show_choices, print_success, print_error
 import tempfile
 import json
 console = Console()
-from rundbfast.managers.helpers.pgadmin_helper import add_server as add_server_helper
+from rundbfast.core.managers.helpers.pgadmin_helper import add_server as add_server_helper
 
 
 class DockerManager:

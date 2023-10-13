@@ -2,7 +2,6 @@ import time
 from rundbfast.core.cli.ui import print_label, print_message, print_success, print_warning
 from rundbfast.core.managers.container_manager import ContainerManager
 from rundbfast.core.managers.helpers.metadb_helper import execute_initial_user_setup
-from rundbfast.core.managers.initializers import initialize_pgadmin
 import logging
 
 # Constants

@@ -1,9 +1,9 @@
 # rundbfast/managers/initializer/postgresql_initializer.py
 
-from rundbfast.shared.utils import get_postgres_password
-from rundbfast.config import load_configurations
 
+from rundbfast.config import load_configurations
 from rundbfast.core.cli.ui import print_error, print_header, print_message, print_success, print_warning, show_progress
+from rundbfast.core.cli.user_input import get_postgres_password
 from rundbfast.core.managers.postgres_manager import PostgreSQLManager
 from rundbfast.core.shared.utils import wait_for_container
 
