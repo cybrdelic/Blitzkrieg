@@ -1,6 +1,4 @@
-# RunDBFast
-
-![RunDBFast Logo](./logo.png)
+# Blitzkrieg
 
 **Quickly set up and manage databases for your projects with a beautiful CLI interface.**
 
@@ -17,7 +15,7 @@
 
 ## Overview
 
-Setting up databases, especially in development environments, can be a tedious process. `RunDBFast` is designed to simplify and automate this process, allowing developers to focus on what matters most: building great applications. With just a few commands, you can have a fully functional PostgreSQL instance up and running, along with a pgAdmin interface for easy database management.
+Setting up databases, especially in development environments, can be a tedious process. `Blitzkrieg` is designed to simplify and automate this process, allowing developers to focus on what matters most: building great applications. With just a few commands, you can have a fully functional PostgreSQL instance up and running, along with a pgAdmin interface for easy database management.
 
 ### Use Cases
 
@@ -40,7 +38,7 @@ Setting up databases, especially in development environments, can be a tedious p
 ## Installation
 
 ```bash
-pip install rundbfast
+pip install blitzkrieg
 ```
 
 ## Usage
@@ -48,7 +46,7 @@ pip install rundbfast
 To set up a PostgreSQL database:
 
 ```bash
-rundbfast setup postgres
+blitz setup postgres
 ```
 
 Then, follow the on-screen prompts to customize your setup.
@@ -59,10 +57,10 @@ We welcome contributions from the community! Please read our [contributing guide
 
 ## Support
 
-If you encounter any issues or have feature requests, please [open an issue](https://github.com/yourusername/rundbfast/issues) on our GitHub repository.
+If you encounter any issues or have feature requests, please [open an issue](https://github.com/yourusername/Blitzkrieg/issues) on our GitHub repository.
 
 ## License
 
-`RunDBFast` is licensed under the [MIT License](./LICENSE).
+`Blitzkrieg` is licensed under the [MIT License](./LICENSE).
 
 ---
