@@ -1,6 +1,6 @@
-from ..cli.ui import show_spinner
+from cli.ui import show_spinner
 import time
-from ..cli.ui import print_error
+from cli.ui import print_error
 
 def wait_for_container(docker, container_name, timeout=60):
     start_time = time.time()

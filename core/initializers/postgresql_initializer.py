@@ -1,9 +1,11 @@
 
-from rundbfast.cli.ui import print_error, print_header, print_message, print_success, print_warning, show_progress
-from rundbfast.cli.user_input import get_postgres_password
-from rundbfast.managers.initializers import DOCKER_IMAGE_POSTGRES
-from rundbfast.managers.manager import PostgreSQLManager
-from rundbfast.shared.utils import wait_for_container
+from cli.ui import print_error, print_header, print_message, print_success, print_warning, show_progress
+from cli.user_input import get_postgres_password
+from core.managers.postgres_manager import PostgreSQLManager
+from shared.utils import wait_for_container
+from config import load_configurations
+
+DOCKER_IMAGE_POSTGRES = load_configurations('DOCKER_IMAGE_POSTGRES')
 
 
 class PostgreSQLInitializer:

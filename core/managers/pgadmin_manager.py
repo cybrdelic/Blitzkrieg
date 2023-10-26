@@ -1,10 +1,10 @@
 import json
 import tempfile
 import time
-from rundbfast.config import load_configurations
-from rundbfast.core.cli.ui import print_error, print_warning
-from rundbfast.core.managers.container_manager import ContainerManager
-from rundbfast.core.shared.command_runner import CommandRunner
+from config import load_configurations
+from cli.ui import print_error, print_warning
+from core.managers.container_manager import ContainerManager
+from core.shared.command_runner import CommandRunner
 import subprocess
 
 # Load configurations

@@ -1,6 +1,6 @@
 from unittest.mock import call, patch
 import pytest
-from rundbfast.core.cli.ui import print_cli_header, print_cli_footer, print_message, print_header, print_label, print_warning, print_error, print_divider, print_success, print_table, show_choices, show_progress, show_spinner, generate_cli_header
+from Blitzkrieg.core.cli.ui import print_cli_header, print_cli_footer, print_message, print_header, print_label, print_warning, print_error, print_divider, print_success, print_table, show_choices, show_progress, show_spinner, generate_cli_header
 from rich.panel import Panel
 import time
 

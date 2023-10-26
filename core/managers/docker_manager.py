@@ -2,9 +2,9 @@ import json
 import shutil
 from typing import Generator, Optional
 
-from rundbfast.config import load_configurations
-from rundbfast.core.cli.ui import print_success, print_warning
-from rundbfast.core.shared.command_runner import CommandRunner
+from config import load_configurations
+from cli.ui import print_success, print_warning
+from core.shared.command_runner import CommandRunner
 
 # Load configurations
 config = load_configurations()
