@@ -1,5 +1,5 @@
-from rundbfast.cli.parsing.parser_manager import ParserManager
-from rundbfast.config import load_configurations
+from cli.parsing.parser_manager import ParserManager
+from config import load_configurations
 
 
 def main():

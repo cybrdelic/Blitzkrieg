@@ -1,7 +1,8 @@
-from rundbfast.cli.ui import print_header, print_message, print_success, print_warning, print_error
-from rundbfast.cli.user_input import get_pgadmin_credentials
-from rundbfast.shared.utils import wait_for_container
-from rundbfast.managers.manager import DockerManager, PgAdminManager
+from cli.ui import print_header, print_message, print_success, print_warning, print_error
+from cli.user_input import get_pgadmin_credentials
+from core.shared.utils import wait_for_container
+from core.managers.docker_manager import DockerManager
+from core.managers.pgadmin_manager import PgAdminManager
 
 class PgAdminInitializer:
     @staticmethod

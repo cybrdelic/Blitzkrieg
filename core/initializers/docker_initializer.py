@@ -1,7 +1,7 @@
-from rundbfast.cli.ui import print_header, print_message, print_success
-from rundbfast.managers.manager import DockerManager
+from cli.ui import print_header, print_message, print_success
+from core.managers.docker_manager import DockerManager
 from config import load_configurations
-from rundbfast.core.cli.ui import show_progress
+from cli.ui import show_progress
 
 config = load_configurations()
 

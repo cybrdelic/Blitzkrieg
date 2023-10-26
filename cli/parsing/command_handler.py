@@ -1,17 +1,16 @@
-from rundbfast.cli.ui import pause_for_user, print_cli_footer, print_label
-from rundbfast.cli.user_input import get_project_name
-from rundbfast.core.initializers.pgadmin_initializer import PgAdminInitializer
-from rundbfast.core.managers.docker_manager import DockerManager
-from rundbfast.core.managers.postgres_manager import PostgreSQLManager
-
+from cli.ui import pause_for_user, print_cli_footer, print_label
+from cli.user_input import get_project_name
+from core.initializers.pgadmin_initializer import PgAdminInitializer
+from core.managers.docker_manager import DockerManager
+from core.managers.postgres_manager import PostgreSQLManager
 
 class CommandHandler:
-    def __init__(self):
+    def __init__(self, runner):
         self.docker = DockerManager()
-        self.postgres = PostgreSQLManager()
+        self.postgres = PostgreSQLManager(runner)
         self.pgadmin = PgAdminInitializer()
+        self.runner = runner
 
-    @staticmethod
     def setup(self, args):
         project_name = get_project_name()
         print_label(f"Setting up for project: {project_name}")
@@ -21,9 +20,6 @@ class CommandHandler:
         self.pgadmin.initialize(project_name, self.postgres)
         print_cli_footer()
 
-
-
-    @staticmethod
     def setup_meta(self, args):
         print_label(f"Setting up meta database for RunDBFast")
         self.postgres.setup_meta_database(self.docker)

@@ -1,5 +1,5 @@
 import questionary
-from ..cli.ui import show_spinner, print_message, print_success, show_progress
+from cli.ui import show_spinner, print_message, print_success, show_progress
 
 def get_project_name():
         project_name = questionary.text("Enter your project name:").ask()
