@@ -1,7 +1,9 @@
 import argparse
-from blitzkrieg.core.managers.postgres.postgres_manager import PostgreSQLManager
-from asciimatics.screen import Screen
 import asyncio
+from asciimatics.screen import Screen
+
+from blitzkrieg.core.managers.postgres.postgres_manager import initialize_with_persistence_check, stop_containers_async
+from blitzkrieg.core.shared.utils.config import generate_project_config, ProjectConfig
 
 def run():
     parser = argparse.ArgumentParser(description="Blitzkrieg CLI")
@@ -9,14 +11,13 @@ def run():
 
     args = parser.parse_args()
 
-    postgres_manager = PostgreSQLManager()
-
     if args.command == "init":
-        project_name = input("Enter a project name:")
-
-        asyncio.run(postgres_manager.initialize_with_persistence_check(project_name=project_name, init_mode=True, container_name=f"{project_name}-postgres"))
+        project_config: ProjectConfig = generate_project_config()
+        asyncio.run(initialize_with_persistence_check(
+            project_config=project_config
+        ))
     elif args.command == "stop":
-        asyncio.run(postgres_manager.stop_containers_async())
+        asyncio.run(stop_containers_async())
 
 if __name__ == "__main__":
     run()
