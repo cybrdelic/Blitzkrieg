@@ -1,6 +1,5 @@
 import argparse
-from blitzkrieg.cli.asciimatics_utils import AsciimaticsManager
-from blitzkrieg.core.managers.postgres_manager import PostgreSQLManager
+from blitzkrieg.core.managers.postgres.postgres_manager import PostgreSQLManager
 from asciimatics.screen import Screen
 import asyncio
 
