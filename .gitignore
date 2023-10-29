@@ -1,3 +1,7 @@
 .venv/
 *.egg-info/
 __pycache__/
+instances/
+pg_hba.conf
+*.log
+.env
