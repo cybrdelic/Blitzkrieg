@@ -25,6 +25,3 @@ def run():
 
     elif command == 'Stop the project':
         stop_containers_async()
-
-if __name__ == "__main__":
-    run()
