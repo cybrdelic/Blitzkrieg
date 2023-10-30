@@ -29,3 +29,14 @@ def get_project_init_confirmation(project_name: str):
     ]
 
     return inquirer.prompt(questions)['command']
+
+def get_kubernetes_confirmation():
+    questions = [
+        inquirer.List(
+            'command',
+            message=f"Would you like to setup Kubernetes for this project?",
+            choices=["Yes","No"]
+        )
+    ]
+
+    return inquirer.prompt(questions)['command']
