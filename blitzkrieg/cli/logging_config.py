@@ -19,9 +19,9 @@ def setup_logging():
     return backend_logger, ui_logger, console
 
 def logger_decorator(backend_logger, func):
-    async def wrapper(*args, **kwargs):
+    def wrapper(*args, **kwargs):
         backend_logger.info(f"Entering {func.__name__}")
-        result = await func(*args, **kwargs)
+        result = func(*args, **kwargs)
         backend_logger.info(f"Exiting {func.__name__}")
         return result
     return wrapper
