@@ -1,12 +1,12 @@
 from blitzkrieg.cli.logging_config import setup_logging
 from blitzkrieg.cli.ui_utils import handle_error
-from blitzkrieg.core.shared.command_runner import _run_command_async
+from blitzkrieg.core.shared.command_runner import _run_command
 
 
 ui_logger, backend_logger, console = setup_logging()
-async def is_container_ready(container_name: str) -> bool:
+def is_container_ready(container_name: str) -> bool:
     try:
-        status = await _run_command_async(f"docker inspect --format='{{json .State.Status}}' {container_name}")
+        status = _run_command(f"docker inspect --format='{{json .State.Status}}' {container_name}")
         if status == "running":
             console.print(f"[green]Container {container_name} is running![/green]")
             return True

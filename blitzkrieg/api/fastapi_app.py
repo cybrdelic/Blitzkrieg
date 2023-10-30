@@ -5,7 +5,7 @@ app = FastAPI()
 logger = logging.getLogger("api")
 
 @app.get("/connection_details", tags=["Database"])
-async def get_connection_details():
+def get_connection_details():
     try:
         # Here, you'd typically fetch these details from a config or database
         details = {

@@ -2,7 +2,7 @@ from fuzzywuzzy import process
 from pathlib import Path
 from blitzkrieg.cli.ui_utils import handle_error
 
-async def get_template_path(template_dir: Path, input_template_name: str) -> Path:
+def get_template_path(template_dir: Path, input_template_name: str) -> Path:
     try:
         available_files = [f.name for f in template_dir.iterdir() if f.is_file()]
         best_match, score = process.extractOne(input_template_name, available_files)
