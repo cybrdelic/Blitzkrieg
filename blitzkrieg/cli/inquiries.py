@@ -5,7 +5,12 @@ def get_initial_answer():
         inquirer.List(
             'command',
             message="What do you want to do?",
-            choices=['Initialize the project', 'Stop the project'],
+            choices=[
+                'Initialize Blitzkrieg',
+                'Start a new project',
+                'Monitor instances',
+                'Connect existing codebase to database'
+            ],
         )
     ]
     return inquirer.prompt(questions)['command']
