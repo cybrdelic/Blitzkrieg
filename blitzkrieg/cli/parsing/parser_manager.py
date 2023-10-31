@@ -18,7 +18,7 @@ def run():
 
 def handle_init_blitzkrieg_flow(command: str):
     if command == 'Initialize Blitzkrieg':
-        
+        pass
 
 def handle_new_project_flow(command: str):
     if command == 'Start a new project':
