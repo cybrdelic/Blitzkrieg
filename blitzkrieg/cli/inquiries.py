@@ -1,0 +1,47 @@
+import inquirer
+
+def get_initial_answer():
+    questions = [
+        inquirer.List(
+            'command',
+            message="What do you want to do?",
+            choices=[
+                'Initialize Blitzkrieg',
+                'Start a new project',
+                'Monitor instances',
+                'Connect existing codebase to database'
+            ],
+        )
+    ]
+    return inquirer.prompt(questions)['command']
+
+def get_project_name():
+    questions = [
+        inquirer.Text(
+            'project_name',
+            message="What is the project name?",
+        )
+    ]
+    return inquirer.prompt(questions)['project_name']
+
+def get_project_init_confirmation(project_name: str):
+    questions = [
+        inquirer.List(
+            'command',
+            message=f"Are you sure that you want to initialize the project, {project_name}?",
+            choices=['Yes', 'No']
+        )
+    ]
+
+    return inquirer.prompt(questions)['command']
+
+def get_kubernetes_confirmation():
+    questions = [
+        inquirer.List(
+            'command',
+            message=f"Would you like to setup Kubernetes for this project?",
+            choices=["Yes","No"]
+        )
+    ]
+
+    return inquirer.prompt(questions)['command']
