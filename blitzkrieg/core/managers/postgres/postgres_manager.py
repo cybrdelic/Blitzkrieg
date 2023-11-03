@@ -63,16 +63,16 @@ def start_containers_async(project_config: ProjectConfig) -> Tuple[bool, str]:
             ui_logger.warning(msg)
             return (False, msg)
         else:
-            result = _run_command(cmd)  # Actually run the command to start the container
-            if result:
+            result_code, result_message = _run_command(cmd)
+            if result_code == 0:
                 msg = "Containers started successfully."
-                print(f"Result: {result}")
                 ui_logger.info(msg)
                 return (True, msg)
             else:
-                msg = "Failed to start containers."
+                msg = f"Failed to start containers. Error: {result_message}"
                 ui_logger.error(msg)
                 return (False, msg)
+
     else:
         msg = "Failed to generate Docker Compose file."
         ui_logger.error(msg)
