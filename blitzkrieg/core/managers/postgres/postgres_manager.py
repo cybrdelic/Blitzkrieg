@@ -4,8 +4,9 @@ from rich.console import Console
 from blitzkrieg.cli.logging_config import setup_logging
 from blitzkrieg.cli.step_by_steps import show_generate_compose_file_steps
 from blitzkrieg.cli.ui_utils import (
-    progress_bar, handle_error, Step, TextComponent, step_by_step, confirm_action
+    handle_link, progress_bar, handle_error, Step, TextComponent, step_by_step, confirm_action
 )
+import socket
 from typing import Tuple
 from blitzkrieg.core.managers.docker_manager import is_container_ready
 from blitzkrieg.core.shared.command_runner import _run_command
@@ -28,6 +29,10 @@ def generate_docker_compose_file(project_config: ProjectConfig) -> Path:
 
     output_path = project_config.instances_dir / f"docker-compose-{project_name}.yml"
     try:
+        # Find available ports and set them in the project config
+        project_config.postgres_port = find_available_port()
+        project_config.pgadmin_port = find_available_port(5050)
+
         with open(template_path, 'r') as f:
             template = Template(f.read())
 
@@ -37,10 +42,10 @@ def generate_docker_compose_file(project_config: ProjectConfig) -> Path:
                 POSTGRES_USER=project_config.db_user,
                 POSTGRES_PASSWORD=password,
                 POSTGRES_DB=project_name,
-                POSTGRES_PORT=find_available_port(),
+                POSTGRES_PORT=project_config.postgres_port,
                 PGADMIN_EMAIL=project_config.admin_email,
                 PGADMIN_PASSWORD=password,
-                PGADMIN_PORT=find_available_port(5050)
+                PGADMIN_PORT=project_config.pgadmin_port
             )
             f.write(rendered)
 
@@ -52,7 +57,6 @@ def generate_docker_compose_file(project_config: ProjectConfig) -> Path:
         return None
 
 def start_containers_async(project_config: ProjectConfig) -> Tuple[bool, str]:
-    ui_logger.info("start_containers_async called.")
     show_generate_compose_file_steps(project_config.project_name)
     compose_file_path = generate_docker_compose_file(project_config)
     if compose_file_path:
@@ -67,17 +71,25 @@ def start_containers_async(project_config: ProjectConfig) -> Tuple[bool, str]:
             if result_code == 0:
                 msg = "Containers started successfully."
                 ui_logger.info(msg)
+
+                # Assuming the server is accessible on the local machine
+                server_host = socket.gethostbyname(socket.gethostname())
+
+                # Retrieve the ports from ProjectConfig and output URLs
+                pgadmin_url = f"http://{server_host}:{project_config.pgadmin_port}"
+                postgres_url = f"postgresql://{project_config.db_user}:{project_config.password}@{server_host}:{project_config.postgres_port}/{project_config.project_name}"
+                handle_link(url=pgadmin_url, text="PgAdmin server URL")
+                console.print(f"[yellow]Postgres server connection string:[/yellow] [green]{postgres_url}[/green]")
+
                 return (True, msg)
             else:
                 msg = f"Failed to start containers. Error: {result_message}"
                 ui_logger.error(msg)
                 return (False, msg)
-
     else:
         msg = "Failed to generate Docker Compose file."
         ui_logger.error(msg)
         return (False, msg)
-
 
 def stop_containers_async(project_name: str):
     steps = [
