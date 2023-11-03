@@ -1,3 +1,4 @@
+import webbrowser
 from rich.prompt import Prompt
 from blitzkrieg.cli.logging_config import setup_logging
 from rich.table import Table
@@ -37,7 +38,16 @@ class TextComponent(UIComponent):
 def handle_error(message: str, suggestion: str = None):
     console.print(Panel(f"[bold red]Error: {message}[/bold red]", expand=False))
     if suggestion:
-        console.print(Panel(f"[italic yellow]Suggestion: {suggestion}[/italic yellow]", expand=False))
+        handle_suggestion(message=suggestion)
+
+def handle_suggestion(message: str):
+    console.print(Panel(f"[italic yellow]Suggestion: {message}[/italic yellow]", expand=False))
+
+def handle_link(url: str, text: str):
+    try:
+        console.print(f"[italic yellow][link={url}]{text}[/link][/italic yellow]", highlight=False)
+    except Exception as e:
+        console.print(f"Could not create a clickable link due to: {e}. Here is the URL: {url}")
 
 # Confirm Action
 def confirm_action(message: str) -> bool:
