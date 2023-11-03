@@ -9,14 +9,18 @@ def setup_logging():
     logging.basicConfig(filename='blitzkrieg_backend.log', level=logging.INFO)
     backend_logger = logging.getLogger('backend')
 
+    # Setup UI logger only if it has no handlers
     ui_logger = logging.getLogger('ui')
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    ui_logger.addHandler(console_handler)
+    if not ui_logger.handlers:  # Checks if ui_logger has no handlers
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        ui_logger.addHandler(console_handler)
+        ui_logger.propagate = False  # Prevent logs from being propagated to the root logger
 
     console = Console()
 
     return backend_logger, ui_logger, console
+
 
 def logger_decorator(backend_logger, func):
     def wrapper(*args, **kwargs):
