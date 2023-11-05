@@ -43,27 +43,28 @@ Blitzkrieg is a comprehensive tool aimed at simplifying database operations. It 
 
 ---
 
-## Features
+## Current Features
 
-- **Easy Setup**: A single command deploys a fully functional PostgreSQL database.
-- **Beautiful CLI**: Powered by Rich and Questionary, making your experience interactive and enjoyable.
-- **Docker Integration**: Seamless containerization of all databases and pgAdmin instances.
+- **Easy Setup**: A single command deploys a fully functional PostgreSQL database, eliminating complex setup procedures and minimizing time to deployment.
+- **Beautiful CLI**: Powered by Rich and Questionary, this CLI elevates your interaction with terminal operations, providing an aesthetically pleasing and intuitive user experience.
+- **Docker Integration**: Ensures seamless containerization of databases and pgAdmin instances, providing a consistent environment for development and production.
+- **Automated Local PgAdmin Server Instance Creation**: Automatically spins up a local PgAdmin server instance with pre-configured settings, allowing for immediate web-based database management.
+- **Automated Postgres Instance Creation**: Initiates and manages PostgreSQL instances with tailor-made configurations, streamlining database provisioning and ensuring optimal settings for performance.
 
----
+## Upcoming Features
 
-## Advanced Features
-
-- **Kubernetes Support**: Utilize Kubernetes for automatic scaling and high availability.
-- **Auto-Discovery**: Automatically discover and manage new PostgreSQL and Vector database instances.
-- **Load Balancing**: Traffic distribution is made seamless across your databases.
-- **Automated Backups**: Built-in functionality to backup your databases.
-- **Monitoring and Alerts**: Full integration with Prometheus and Grafana for real-time monitoring and alerts.
-
+- **Auto-Configuration for PostgreSQL in PgAdmin**: Automate the initial setup and registration of PostgreSQL servers in the pgAdmin interface, allowing you to manage and access your servers from the get-go under the 'Servers' group in the pgAdmin UI.
+- **Built-In Meta-Database**: Incorporate a self-managed meta-database that centralizes the management and orchestration of all database instances, streamlining operations and providing a unified view of system health and metrics.
+- **Automated Backups**: Implement scheduled backups to safeguard your data, with restoration capabilities for resilience against data loss.
+- **Kubernetes Support**: Leverage Kubernetes to facilitate automatic scaling and ensure high availability of your database instances.
+- **Load Balancing**: Distribute incoming database traffic evenly across instances to maintain performance and availability.
+- **Monitoring and Alerts**: Integrate with Prometheus and Grafana to provide real-time monitoring and alerting for your databases, ensuring you're always informed of their status.
+ 
 ---
 
 ## Zero-Config Automation 🤖
 
-With Blitzkrieg's Zero-Config Automation, you don't have to worry about the nitty-gritty details of setting up databases. Here's how it works:
+With Blitzkrieg's Zero-Config Automation, you don't have to worry about the nitty-gritty details of setting up databases. Here's how it can work:
 
 ### Database Details
 
