@@ -1,7 +1,7 @@
 
-<h1 style="display: flex; align-items: center;">
+<h1 style="font-size: 48px; display: flex; align-items: center;">
   <img src=".docs/media/images/logo.png" alt="Logo" width="300" style="margin-right: 10px;"/>
-  <span style="font-size: 2em;">Blitzkrieg</span>
+  <span style="font-size: inherit;">Blitzkrieg</span>
 </h1>
 
 ## The Ultimate Database Operations Manager
