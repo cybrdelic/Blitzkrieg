@@ -1,5 +1,5 @@
 # Blitzkrieg 🚀
-
+![alt](./docs/media/images/logo.svg)
 ## The Ultimate Database Operations Manager
 
 > **Automate, manage, and scale your database operations seamlessly with Docker and Kubernetes.**
