@@ -1,5 +1,6 @@
 # Blitzkrieg ![alt](/.docs/media/images/logo.png)
 
+<h1> Blitzkrieg <img src=".docs/media/images/logo.png" alt="Alt text" width="200"/></h1>
 
 ## The Ultimate Database Operations Manager
 
