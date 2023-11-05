@@ -1,4 +1,4 @@
-<img src=".docs/media/images/logo.png" alt="Logo" height="200"/>
+<img src=".docs/media/images/logo.png" alt="Logo" height="400"/>
 
 ## The Ultimate Database Operations Manager
 
