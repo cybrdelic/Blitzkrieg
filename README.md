@@ -1,4 +1,5 @@
 <img src=".docs/media/images/logo.png" alt="Logo" width="500" />
+
 ## The Ultimate Database Operations Manager
 
 > **Automate, manage, and scale your database operations seamlessly with Docker and Kubernetes.**
