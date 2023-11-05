@@ -1,5 +1,5 @@
 
-  <img src=".docs/media/images/logo.png" alt="Logo" width="500" />
+  <img src=".docs/media/images/logo.png" alt="Logo" width="300" />
 
 
 ## The Ultimate Database Operations Manager
