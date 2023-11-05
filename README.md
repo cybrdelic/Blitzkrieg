@@ -1,7 +1,6 @@
 
-<h1 style="font-size: 48px; display: flex; align-items: center;">
-  <img src=".docs/media/images/logo.png" alt="Logo" width="300" style="margin-right: 10px;"/>
-</h1>
+  <img src=".docs/media/images/logo.png" alt="Logo" width="500" />
+
 
 ## The Ultimate Database Operations Manager
 
