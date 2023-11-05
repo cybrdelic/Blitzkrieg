@@ -1,5 +1,5 @@
 
-<h1 style="font-size: 60px; line-height: 1; display: flex; align-items: center;">
+<h1 style="font-size: 200px; line-height: 1; display: flex; align-items: center;">
   <img src=".docs/media/images/logo.png" alt="Logo" width="300" style="margin-right: 10px;"/>Blitzkrieg
 </h1>
 
