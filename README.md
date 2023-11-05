@@ -1,4 +1,5 @@
 # Blitzkrieg 🚀
+![alt](/.docs/media/images/logo.svg)
 
 ## The Ultimate Database Operations Manager
 
