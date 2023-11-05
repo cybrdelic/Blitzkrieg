@@ -1,6 +1,6 @@
 
 <h1>
-  <img src=".docs/media/images/logo.png" alt="Logo" width="20"/> Blitzkrieg
+  <img src=".docs/media/images/logo.png" alt="Logo" width="50"/> Blitzkrieg
 </h1>
 
 
