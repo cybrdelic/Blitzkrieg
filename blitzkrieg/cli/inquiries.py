@@ -6,10 +6,7 @@ def get_initial_answer():
             'command',
             message="What do you want to do?",
             choices=[
-                'Initialize Blitzkrieg',
                 'Start a new project',
-                'Monitor instances',
-                'Connect existing codebase to database'
             ],
         )
     ]
