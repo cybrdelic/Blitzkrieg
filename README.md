@@ -67,19 +67,19 @@ Blitzkrieg is a comprehensive tool aimed at simplifying database operations. It 
 
 With Blitzkrieg's Zero-Config Automation, you don't have to worry about the nitty-gritty details of setting up databases. Here's how it can work:
 
-### Database Details
+### Database Details (Upcoming Feature)
 
 Upon initialization, Blitzkrieg will auto-generate the database names, table schemas, and other essential details based on the project name and environmental context. This takes the guesswork out of naming conventions and schema structures, and it ensures that your database setup adheres to best practices.
 
-### Credentials
+### Credentials (Upcoming Feature)
 
 Blitzkrieg will automatically generate secure credentials for your databases. These credentials are then encrypted and stored in a secure vault that only authorized users can access. This eliminates the need for manual password management while enhancing security.
 
-### Kubernetes Configuration
+### Kubernetes Configuration (Upcoming Feature)
 
 Blitzkrieg comes with a set of best-practices templates for Kubernetes. These templates define how your databases should be orchestrated, scaled, and managed. You don't have to be a Kubernetes expert to benefit from its powerful features.
 
-### Meta-Database
+### Meta-Database (Upcoming Feature)
 
 A meta-database will be auto-generated during the initialization process. This database will contain tables that help in managing the instances you deploy. Each entry will have metadata like instance name, status, health metrics, and more, allowing for easy management and monitoring.
 
@@ -87,15 +87,15 @@ A meta-database will be auto-generated during the initialization process. This d
 
 Blitzkrieg will automatically deploy a pgAdmin instance and connect it to your PostgreSQL databases using the securely generated credentials. This means you get a fully functional, ready-to-use database management UI right out of the box.
 
-### Application Connection
+### Application Connection (Upcoming Feature)
 
 If Blitzkrieg detects a common programming language or framework in your project, it will auto-inject the necessary code snippets and environment variables to establish a database connection. This saves you the hassle of manually updating your application code to connect to the new databases.
 
-### Scaling and Monitoring
+### Scaling and Monitoring (Upcoming Feature)
 
 Blitzkrieg uses sensible defaults to handle scaling and monitoring. If the system detects high resource utilization, it will automatically trigger scaling operations. Monitoring is handled via integrated support for Prometheus and Grafana, providing real-time insights into your databases' performance.
 
-### Backups
+### Backups (Upcoming Feature)
 
 Blitzkrieg sets up a standard backup process that runs at regular intervals. This ensures that your data is safe and that you can recover quickly in case of any mishaps.
 
@@ -126,7 +126,7 @@ pip install blitzkrieg
 Initialize a PostgreSQL database and pgAdmin with:
 
 ```bash
-blitz init postgres pgadmin
+blitz
 ```
 
 Follow the on-screen prompts to customize your setup.
@@ -145,7 +145,7 @@ Currently supports:
 
 ---
 
-## Scaling and Load Balancing
+## Scaling and Load Balancing (Upcoming Feature)
 
 Blitzkrieg utilizes Kubernetes to automatically scale your database operations. Consult our Kubernetes guide for more details.
 
@@ -155,16 +155,10 @@ Blitzkrieg utilizes Kubernetes to automatically scale your database operations. 
 
 ### Database Initialization
 
-1. Run `blitz init` to initialize your databases and a meta-database.
+1. Run `blitz` to initialize your databases and a meta-database.
 2. The meta-database is created with tables to manage instances.
 3. Credentials are generated and stored securely.
-
-### Connecting Existing Codebases
-
-1. Use `blitz connect` to connect existing codebases to a new database.
-2. The command detects the programming language and injects the necessary database connection code.
-3. Environment variables for the database connection are set automatically.
-
+   
 ---
 
 ## Error Handling
@@ -174,24 +168,6 @@ Blitzkrieg employs advanced error-handling mechanisms:
 - **Retry Mechanisms**: For handling transient failures.
 - **Circuit Breakers**: To prevent overloading services.
 - **Detailed Logs**: For effective debugging and traceability.
-
----
-
-## Security
-
-- **Vault Integration**: All sensitive data like database credentials are securely stored.
-- **RBAC**: Role-based access control is implemented for all database instances.
-- **Data Encryption**: All data is encrypted both at rest and in transit.
-
----
-
-## CLI Commands
-
-- `blitz init`: Initialize your databases and a meta-database.
-- `blitz connect`: Connect an existing codebase to a new database.
-- `blitz deploy`: Deploy databases to a Kubernetes cluster.
-- `blitz scale`: Scale your database instances up or down.
-- `blitz backup`: Trigger an immediate backup of your databases.
 
 ---
 
