@@ -130,7 +130,7 @@ blitz init postgres pgadmin
 
 Follow the on-screen prompts to customize your setup.
 
-![Blitzkrieg Create Project Flow](.docs/media/blitz_create_project_flow.gif)
+![Blitzkrieg Create Project Flow](.docs/media/gifs/blitz_create_project_flow.gif)
 
 
 ---
