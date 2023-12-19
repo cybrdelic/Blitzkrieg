@@ -11,6 +11,10 @@ services:
       - "{{POSTGRES_PORT}}:{{POSTGRES_PORT}}"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    networks:
+      default:
+        aliases:
+          - "{{POSTGRES_HOST_ALIAS}}"
 
   pgadmin:
     image: dpage/pgadmin4:latest
