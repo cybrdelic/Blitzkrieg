@@ -45,7 +45,8 @@ def generate_docker_compose_file(project_config: ProjectConfig) -> Path:
                 POSTGRES_PORT=project_config.postgres_port,
                 PGADMIN_EMAIL=project_config.admin_email,
                 PGADMIN_PASSWORD=password,
-                PGADMIN_PORT=project_config.pgadmin_port
+                PGADMIN_PORT=project_config.pgadmin_port,
+                POSTGRES_HOST_ALIAS=project_config.postgres_host_alias
             )
             f.write(rendered)
 
@@ -77,7 +78,7 @@ def start_containers_async(project_config: ProjectConfig) -> Tuple[bool, str]:
 
                 # Retrieve the ports from ProjectConfig and output URLs
                 pgadmin_url = f"http://{server_host}:{project_config.pgadmin_port}"
-                postgres_url = f"postgresql://{project_config.db_user}:{project_config.password}@{server_host}:{project_config.postgres_port}/{project_config.project_name}"
+                postgres_url = f"postgresql://{project_config.db_user}:{project_config.password}@{project_config.postgres_host_alias}:{project_config.postgres_port}/{project_config.project_name}"
                 handle_link(url=pgadmin_url, text="PgAdmin server URL")
                 console.print(f"[yellow]Postgres server connection string:[/yellow] [green]{postgres_url}[/green]")
 
