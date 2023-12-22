@@ -5,3 +5,9 @@ instances/
 pg_hba.conf
 *.log
 .env
+build/
+dist/
+launch.json
+blitzkrieg/initialization/config.env
+servers.json
+.docs/tickets/
