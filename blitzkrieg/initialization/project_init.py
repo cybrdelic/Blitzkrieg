@@ -1,18 +1,10 @@
 import json
-import subprocess
 import time
 from blitzkrieg.networking.port_allocation import find_available_port
 
 from blitzkrieg.initialization.print_connection_details import print_connection_details
+from blitzkrieg.shared.run_command import run_command
 from .load_config import load_config
-
-def run_command(command, capture_output=False):
-    try:
-        result = subprocess.run(command, check=True, shell=True, stdout=subprocess.PIPE if capture_output else None)
-        return result.stdout.decode('utf-8') if capture_output else ""
-    except subprocess.CalledProcessError as e:
-        print(f"An error occurred: {e}")
-        exit(1)
 
 def create_pgadmin_server_json(project_name: str):
     server_json = {
@@ -94,10 +86,12 @@ def setup_pgadmin(config, project_name: str):
     create_pgpass_file(config, project_name)
     print_initialization_complete_message(config)
 
-def initialize_project(project_name: str):
-    password = load_config()
-    postgres_port = find_available_port(5432)
-    pgadmin_port = find_available_port(5050)
+def initialize_project(
+    project_name: str,
+    postgres_port: int = find_available_port(5432),
+    pgadmin_port: int = find_available_port(5050)
+):
+
     config = {
         'host': f"{project_name}-postgres",  # Adjust to actual host if different
         'db': project_name,
