@@ -32,12 +32,31 @@ def run_pgadmin_container(project_name: str):
     network_name = f"{project_name}-network"
     pgadmin_port = find_available_port(5050)
 
+    # Get the absolute path of the current directory
+    current_dir = os.path.abspath(os.getcwd())
+
+    # Construct the absolute path of the servers.json file
+    servers_file_path = os.path.join(current_dir, "servers.json")
+
+    # Print the content of the servers.json file
+    with open(servers_file_path, 'r') as f:
+        print(f"Content of servers.json: {f.read()}")
+
     pgadmin_run_command = (
         f"docker run -d --name {project_name}-pgadmin -p {pgadmin_port}:80 "
         f"-e 'PGADMIN_DEFAULT_EMAIL=admin@example.com' "
         f"-e 'PGADMIN_DEFAULT_PASSWORD=0101' "
         f"--network {network_name} "
-        "-v $(pwd)/servers.json:/pgadmin4/servers.json "
+        f"-v {servers_file_path}:/pgadmin4/servers.json "
         "dpage/pgadmin4"
     )
+
+    # Print the Docker command
+    print(f"Docker command: {pgadmin_run_command}")
+
     run_command(pgadmin_run_command)
+
+    # Inspect the Docker container
+    inspect_command = f"docker inspect {project_name}-pgadmin"
+    print(f"Inspect command: {inspect_command}")
+    run_command(inspect_command)

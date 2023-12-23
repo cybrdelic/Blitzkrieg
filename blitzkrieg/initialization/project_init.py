@@ -1,7 +1,7 @@
 import json
 import time
 from blitzkrieg.networking.port_allocation import find_available_port
-
+import requests
 from blitzkrieg.initialization.print_connection_details import print_connection_details
 from blitzkrieg.shared.run_command import run_command
 from .load_config import load_config
@@ -14,7 +14,7 @@ def create_pgadmin_server_json(project_name: str):
             "Group": "Servers",
             "Host": f"{project_name}-postgres",
             "Port": 5432,
-            "MaintenanceDB": "xela",
+            "MaintenanceDB": project_name,
             "Username": f"{project_name}-db-user",
             "SSLMode": "prefer",
             "PassFile": "/var/lib/pgadmin/pgpassfile"
@@ -59,9 +59,22 @@ def run_pgadmin_container(config, project_name: str):
     )
     run_command(pgadmin_run_command)
 
-def wait_for_pgadmin_to_start():
-    print("Waiting for pgAdmin to start...")
-    time.sleep(10)  # Adjust time as needed
+def wait_for_pgadmin_to_start(pgadmin_port):
+    print(f"Waiting for pgAdmin to start on port {pgadmin_port}...")
+    while True:
+        try:
+            response = requests.get(f'http://localhost:{pgadmin_port}/')
+            print(f"Received status code {response.status_code} from pgAdmin.")
+            if response.status_code == 200:
+                print("pgAdmin started successfully.")
+                break
+            else:
+                print(f"Unexpected status code from pgAdmin: {response.status_code}")
+        except requests.exceptions.ConnectionError:
+            time.sleep(0.3)  # Adjust time as needed
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            break
 
 def create_pgpass_file(config, project_name: str):
     host = config['host']
@@ -82,7 +95,7 @@ def setup_pgadmin(config, project_name: str):
     create_docker_network(project_name)
     run_postgres_container(config, project_name)
     run_pgadmin_container(config, project_name)
-    wait_for_pgadmin_to_start()
+    wait_for_pgadmin_to_start(config['pgadmin_port'])
     create_pgpass_file(config, project_name)
     print_initialization_complete_message(config)
 
