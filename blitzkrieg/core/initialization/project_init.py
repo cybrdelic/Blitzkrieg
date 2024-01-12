@@ -1,9 +1,9 @@
 import json
 import time
-from blitzkrieg.networking.port_allocation import find_available_port
+from blitzkrieg.core.networking.port_allocation import find_available_port
 import requests
-from blitzkrieg.initialization.print_connection_details import print_connection_details
-from blitzkrieg.shared.run_command import run_command
+from blitzkrieg.core.initialization.print_connection_details import print_connection_details
+from blitzkrieg.core.shared.run_command import run_command
 from .load_config import load_config
 
 def create_pgadmin_server_json(project_name: str):

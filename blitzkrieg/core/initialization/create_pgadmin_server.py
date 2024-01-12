@@ -2,8 +2,8 @@ import json
 import json
 import os
 
-from blitzkrieg.initialization.project_init import run_command
-from blitzkrieg.networking.port_allocation import find_available_port
+from blitzkrieg.core.initialization.project_init import run_command
+from blitzkrieg.core.networking.port_allocation import find_available_port
 
 def create_pgadmin_server_json(project_name: str, server_id: int):
     file_name = f"{project_name}_servers.json"

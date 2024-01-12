@@ -1,7 +1,7 @@
 import click
 from blitzkrieg.config import get_config
-from blitzkrieg.initialization.create_pgadmin_server import create_pgadmin_server_json, run_pgadmin_container
-from blitzkrieg.initialization.project_init import initialize_project
+from blitzkrieg.core.initialization.create_pgadmin_server import create_pgadmin_server_json, run_pgadmin_container
+from blitzkrieg.core.initialization.project_init import initialize_project
 import os
 import time
 import subprocess

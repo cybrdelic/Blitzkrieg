@@ -1,4 +1,4 @@
-from blitzkrieg.networking.port_allocation import find_available_port
+from blitzkrieg.core.networking.port_allocation import find_available_port
 
 def get_config():
     postgres_port = find_available_port(5432)
