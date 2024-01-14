@@ -38,19 +38,32 @@
 ---
 
 ## Overview
+Blitzkrieg is a comprehensive tool aimed at end-to-end automation of the entire SDLC, with a unique focus on autonomous project extrapolation and recurrent feedback loops between autonomous systems to ensure autonomy.
+
+### 1. Autonomous Codebase Scaffolding for Python CLI Projects
+The ```codebase_scaffolding``` module in ```blitzkrieg``` is responsible for automating all tasks related to the following:
+- [] initalizing project directory CLI structure
+- [] initializing ```setup.py```
+- [] creating and managing scripts
+- [] initalizing ```Makefile```
+- [] initializing virtual env and installing dependencies
+- [] autonomous build and PyPI deployment setup
+- [] initializing githuh repo and connecting project dir to it
+
+### 2. Autonomous Project Management and Extrapolation
+
+### 3. Autonomous Database Orchestration and Management
+The ```core``` module in ```blitzkrieg``` is designed to autonomously perform the entire end-to-end database setup for Postgres and PgAdmin and provide managerial functionality, so you can hit the ground running. It takes care of the following:
+- [] Initializing Postgres and PgAdmin Docker Containers
+- [] Providing Connection Details and Instructions
+- [] Connecting PgAdmin to the Postgres Instance
+- [] Dynamic Port Allocation
+
 
 Blitzkrieg is a comprehensive tool aimed at simplifying database operations. It offers automation, scalability, and a beautiful CLI interface. Whether you are looking to spin up a PostgreSQL or Vector database, Blitzkrieg has you covered. It even manages pgAdmin instances, all containerized via Docker and orchestrated through Kubernetes.
 
----
+## Use Cases
 
-## Current Features
-
-- [x] **Easy Setup**: A single command deploys a fully functional PostgreSQL database, eliminating complex setup procedures and minimizing time to deployment.
-- [x] **Beautiful CLI**: Powered by Rich and Questionary, this CLI elevates your interaction with terminal operations, providing an aesthetically pleasing and intuitive user experience.
-- [x]  **Docker Integration**: Ensures seamless containerization of databases and pgAdmin instances, providing a consistent environment for development and production.
-- [x] **Automated Postgres Instance Creation**: Initiates and manages PostgreSQL instances with tailor-made configurations, streamlining database provisioning and ensuring optimal settings for performance.
-- [x] **Automated Local PgAdmin Server Instance Creation**: Automatically spins up a local PgAdmin server instance with pre-configured settings, allowing for immediate web-based database management.
-- [ ] **Easy Database Connection**: Get database connection simply using the project name as such: ```python get_connection("[[ProjectName goes here]]")```
 
 ## Upcoming Features
 
@@ -60,7 +73,7 @@ Blitzkrieg is a comprehensive tool aimed at simplifying database operations. It 
 - [ ] **Kubernetes Support**: Leverage Kubernetes to facilitate automatic scaling and ensure high availability of your database instances.
 - [ ] **Load Balancing**: Distribute incoming database traffic evenly across instances to maintain performance and availability.
 - [ ] **Monitoring and Alerts**: Integrate with Prometheus and Grafana to provide real-time monitoring and alerting for your databases, ensuring you're always informed of their status.
- 
+
 ---
 
 ## Zero-Config Automation 🤖
@@ -158,7 +171,7 @@ Blitzkrieg utilizes Kubernetes to automatically scale your database operations. 
 1. Run `blitz` to initialize your databases and a meta-database.
 2. The meta-database is created with tables to manage instances.
 3. Credentials are generated and stored securely.
-   
+
 ---
 
 ## Error Handling
@@ -185,10 +198,10 @@ Blitzkrieg is integrated with Prometheus and Grafana. This allows you to set up 
 
 ## FAQ
 
-**Q: How do I connect multiple codebases?**  
+**Q: How do I connect multiple codebases?**
 A: Use `blitz connect` for each codebase.
 
-**Q: Can Blitzkrieg be used for non-Python projects?**  
+**Q: Can Blitzkrieg be used for non-Python projects?**
 A: Yes, Blitzkrieg is language-agnostic when it comes to managing databases.
 
 ---
