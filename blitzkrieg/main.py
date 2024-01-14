@@ -1,82 +1,47 @@
+from blitzkrieg.cli_interface import handle_create_project_command, handle_delete_project_command, handle_link_pgadmin_postgres_command, handle_pgadmin_postgres_init_all_command, handle_pgadmin_postgres_init_command, handle_remove_postgres_pgadmin_command, handle_remover_postgres_pgadmin_command
 import click
-from blitzkrieg.initialization.project_init import initialize_project
-import os
-import time
 import subprocess
-
-projects = [
-    'blitzkrieg',
-    'jjugg',
-    'nxiqai',
-    'codegyp',
-    'alexfigueroatech',
-    'economaestro',
-    'profilomesh',
-    'termifolio',
-]
 @click.group()
 def main():
     pass
 
-@main.command()
+@main.command('pg')
 @click.argument('project_name')
 def init(project_name):
-    """Initialize the application."""
-    initialize_project(project_name)
-    # rest of your code
+    handle_pgadmin_postgres_init_command(project_name)
 
-@main.command()
+@main.command("pg-all")
 def all():
-    """Initialize the application."""
-    for project in projects:
-        initialize_project(project)
-    # rest of your code
-@main.command()
+    handle_pgadmin_postgres_init_all_command()
+
+@main.command('remover-pg')
 def remover():
-    """Initialize the application."""
-    for project in projects:
-        os.system(f"docker stop {project}-postgres")
-        os.system(f"docker stop {project}-pgadmin")
-        os.system(f"docker rm {project}-postgres")
-        os.system(f"docker rm {project}-pgadmin")
-        os.system(f"docker network rm {project}-network")
-    # rest of your code
-@main.command()
+    handle_remover_postgres_pgadmin_command()
+
+@main.command('remove-pg')
 @click.argument('project_name')
 def remove(project_name):
-    """Remove the application."""
+    handle_remove_postgres_pgadmin_command(project_name)
 
-    os.system(f"docker stop {project_name}-postgres")
-    os.system(f"docker stop {project_name}-pgadmin")
-    os.system(f"docker rm {project_name}-postgres")
-    os.system(f"docker rm {project_name}-pgadmin")
-    os.system(f"docker network rm {project_name}-network")
-
-@main.command()
+@main.command('link-pg')
 @click.argument('project_name_1')
 @click.argument('project_name_2')
 @click.argument('parent_name')
-def link_projects(project_name_1, project_name_2, parent_name):
-    """Link two projects and add both PostgreSQL servers to a single parent pgAdmin."""
-    # Create a new Docker network
-    network_name = f'{parent_name}-network'
-    subprocess.run(['docker', 'network', 'create', network_name], check=True)
+def link(project_name_1, project_name_2, parent_name):
+    handle_link_pgadmin_postgres_command(project_name_1, project_name_2, parent_name)
 
-    # Connect the projects to the network
-    subprocess.run(['docker', 'network', 'connect', network_name, project_name_1], check=True)
-    subprocess.run(['docker', 'network', 'connect', network_name, project_name_2], check=True)
+@main.command('setup-test')
+def setup_test():
+    """Run the setup_test_env.sh script."""
+    subprocess.run(['../../bash/setup_test_env.sh'], check=True)
 
-    # Run pgAdmin on the same network
-    subprocess.run([
-        'docker', 'run', '-p', '80:80',
-        '--network', network_name,
-        '-e', f'PGADMIN_DEFAULT_EMAIL={parent_name}@example.com',
-        '-e', 'PGADMIN_DEFAULT_PASSWORD=secret',
-        '-d',
-        '--name', parent_name,
-        'dpage/pgadmin4'
-    ], check=True)
+@main.command('create')
+def create_project():
+    handle_create_project_command()
 
+@main.command('delete')
+def delete_project():
+    handle_delete_project_command()
 
 if __name__ == "__main__":
     click.echo("Starting the application...")
