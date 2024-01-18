@@ -35,6 +35,14 @@ class ProjectCRUD:
             session.commit()
         return project
 
+    @staticmethod
+    def get_next_index(session: Session):
+        project = session.query(Project).order_by(Project.index.desc()).first()
+        if project:
+            return project.index + 1
+        else:
+            return 1
+
 
 from sqlalchemy.orm import Session
 from blitzkrieg.project_management.db.models.project import Project
@@ -49,6 +57,10 @@ class ProjectCRUD:
     @staticmethod
     def get_project_by_id(session: Session, project_id: int):
         return session.query(Project).filter(Project.id == project_id).first()
+
+    @staticmethod
+    def get_project_by_name(session: Session, project_name: str):
+        return session.query(Project).filter(Project.name == project_name).first()
 
     @staticmethod
     def get_all_projects(session: Session):
@@ -72,3 +84,10 @@ class ProjectCRUD:
             session.commit()
         return project
 
+    @staticmethod
+    def get_next_index(session: Session):
+        project = session.query(Project).order_by(Project.index.desc()).first()
+        if project:
+            return project.index + 1
+        else:
+            return 1
