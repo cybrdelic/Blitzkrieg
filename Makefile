@@ -18,9 +18,17 @@ create-db:
 	make create-schemas && make create-enums && make create-tables
 create-projects:
 	cd blitzkrieg/project_management/db/make && python3 create_projects.py
+create-issues:
+	cd blitzkrieg/project_management/db/make && python3 create_issues.py
 seed-projects:
 	cd blitzkrieg/project_management/db/make && python3 seed_projects.py
 copy-last:
 	bash copy_last.sh
 generate-crud:
 	cd blitzkrieg/project_management/db/crud && python3 .generate.py
+generate-services:
+	cd blitzkrieg/project_management/db/services && python3 .generate.py
+update:
+	make create-tables && make generate-crud && make generate-services
+drop-tables:
+	cd blitzkrieg/project_management/db/make && python3 drop_tables.py
