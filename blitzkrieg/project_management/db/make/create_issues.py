@@ -54,7 +54,15 @@ def create_issue_dict(issue_id, title, content, project_name):
 
 def issue_exists_in_db(issue_id, session):
     """Check if an issue with given ID exists in the database."""
-    return IssueService().get_issues(session, issue_id) is not None
+    issue = IssueService().get_issues(session, issue_id)
+    return issue is not None, issue
+
+def update_markdown_file(issue, file_path):
+    """Update the markdown file with the issue's details."""
+    with open(file_path, 'w') as file:
+        file.write(f'{issue.id}\n')
+        file.write(f'# {issue.title}\n\n')
+        file.write(issue.description)
 
 def get_project_root():
     return os.path.abspath(os.path.join(os.getcwd(), '../../../..'))
@@ -95,19 +103,6 @@ def add_uuid_to_file(file_path, uuid_str):
         file.seek(0, 0)
         file.write(f'{uuid_str}\n{content}')
 
-def parse_file_id_and_content(file_path):
-    with open(file_path, 'r') as f:
-        first_line = f.readline().strip()
-        if is_valid_uuid(first_line):
-            title = f.readline().strip()
-            content = ''.join(f.readlines()).strip()
-            return first_line, title, content
-        else:
-            # Move back to the start as it's not a UUID
-            f.seek(0)
-            content = f.read().strip()
-            return None, None, content
-
 def process_issues(files, issues_dir, project_name):
     table = Table(title="Issue Processing Status", show_header=True, header_style="bold magenta")
     table.add_column("File", style="dim")
@@ -122,21 +117,33 @@ def process_issues(files, issues_dir, project_name):
             status = "[blue]Unchanged[/blue]"
 
             if issue_id is None or not is_valid_uuid(issue_id):
-                issue_id = str(uuid.uuid4())
-                add_uuid_to_file(file_path, issue_id)
-                title = "New Issue"  # Default title, change as needed
-                action = "Added UUID"
-                status = "[yellow]Updated[/yellow]"
+                table.add_row(file, "Error", "[red]Invalid UUID[/red]")
+                rprint(f"[red]Error:[/red] Invalid UUID in file {file}")
+                continue
 
-            if not issue_exists_in_db(issue_id, session):
+            exists, existing_issue = issue_exists_in_db(issue_id, session)
+            if not exists:
                 issue = create_issue_dict(issue_id, title, content, project_name)
                 store_issue_in_db(issue, project_name, session)
                 action = "Stored"
                 status = "[green]New Issue[/green]"
+                rprint(f"[green]New issue stored in DB for file {file}[/green]")
+            elif existing_issue.description != content:
+                existing_issue.description = content
+                existing_issue.updated_at = datetime.now()
+                session.commit()
+                action = "Updated"
+                status = "[orange]Issue Updated in DB[/orange]"
+                update_markdown_file(existing_issue, file_path)
+                status += " & Markdown Updated"
+                rprint(f"[orange]Issue {issue_id} updated in DB and markdown file {file}[/orange]")
+            else:
+                rprint(f"[blue]No change detected for file {file}[/blue]")
 
             table.add_row(file, action, status)
 
     console.print(table)
+
 
 def main():
     try:
