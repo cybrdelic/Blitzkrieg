@@ -16,34 +16,13 @@ from blitzkrieg.project_management.db.services.issues_service import IssueServic
 from blitzkrieg.project_management.db.services.project_service import ProjectService
 import time
 
+from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
+
 # Enhanced error reporting
 install()
-# Custom theme for rich
-custom_theme = Theme({
-    "info": "dim cyan",
-    "warning": "magenta",
-    "error": "bold red",
-    "success": "bold green",
-    "header": "bold blue"
-})
 
-console = Console(theme=custom_theme)
+console_interface = ConsoleInterface()
 
-def show_task_progress_bar(task_description, total):
-    """
-    Display a progress bar for a given task.
-    """
-    with Progress(
-        "[progress.description]{task.description}",
-        BarColumn(bar_width=None),
-        "[progress.percentage]{task.percentage:>3.0f}%",
-        console=console,
-        transient=True
-    ) as progress:
-        task = progress.add_task(task_description, total=total)
-        while not progress.finished:
-            progress.update(task, advance=0.1)
-            time.sleep(0.1)
 # User Flow 1: Setup and Environment Configuration
 def find_project_root_directory(marker='.git'):
     """
@@ -91,6 +70,7 @@ def extract_file_details(file_path):
         title = file.readline().strip()
         content = file.read().strip()
     return id_line, title, content
+
 
 def prepend_uuid_to_file(file_path, uuid_str):
     with open(file_path, 'r+') as file:
@@ -154,28 +134,28 @@ def handle_issue_file(file, issues_dir, project_name, session, table):
     """
     file_path = os.path.join(issues_dir, file)
     issue_id, title, content = extract_file_details(file_path)
+    action, status = "", ""
+
+    if not verify_uuid_format(issue_id):
+        # Generate new UUID and prepend to file
+        new_uuid = str(uuid.uuid4())
+        prepend_uuid_to_file(file_path, new_uuid)
+        issue_id = new_uuid
+        action, status = "UUID Prepended", "[green]New UUID Added[/green]"
 
     # Check if issue exists in DB and whether the UUID is valid
     issue_exists, issue_in_db = check_issue_presence_in_database(issue_id, session)
-    is_valid_id = verify_uuid_format(issue_id)
 
-    # Process based on the issue state
-    if not is_valid_id and not issue_exists:  # New issue
-        print("handle_issue_file: Creating new issue")
-        issue_id = str(uuid.uuid4())
-        action, status = manage_new_issue_creation(file, issue_id, title, content, project_name, session, issues_dir)
-    elif issue_exists and not is_valid_id:  # Issue exists in DB but not in file
-        print("handle_issue_file: UUID not found in file")
-        action, status = "Failed", "[red]UUID not found in file[/red]"
-    elif issue_exists and is_valid_id:  # Issue exists and UUID is valid
-        print("handle_issue_file: Updating existing issue")
-        existing_issue = issue_in_db
-        action, status = update_issue_if_modified(file, issue_id, title, content, existing_issue, session, file_path)
-    else:  # Invalid UUID or other cases
-        print("handle_issue_file: Invalid UUID or unexpected case")
-        action, status = "Failed", "[red]Invalid UUID or unexpected case[/red]"
+    if action == "" and status == "":  # Only proceed if no action has been taken yet
+        if not issue_exists:  # New issue
+            issue_id = str(uuid.uuid4())
+            action, status = manage_new_issue_creation(file, issue_id, title, content, project_name, session, issues_dir)
+        elif issue_exists:
+            existing_issue = issue_in_db
+            action, status = update_issue_if_modified(file, issue_id, title, content, existing_issue, session, file_path)
 
     table.add_row(file, action, status)
+
 
 def manage_new_issue_creation(file, issue_id, title, content, project_name, session, issues_dir):
     """
@@ -244,35 +224,6 @@ def synchronize_database_issues_to_markdown(issues_dir, project_name, session, t
             table.add_row(file_name, action, status)
 
 
-def configure_rich_table():
-    """
-    Configure and return a Rich table for displaying the issue processing status.
-
-    The table will have columns for 'File', 'Action', and 'Status', with added
-    styling and alignment for better readability and appearance.
-
-    Returns:
-        Table: A configured Rich table object ready for use.
-    """
-    # Create a new table with a title and header
-    table = Table(
-        title="Issue Processing Status",
-        show_header=True,
-        header_style="bold magenta",  # Bold magenta text on black background for headers
-        title_style="bold cyan",      # Bold cyan text on black background for title
-        border_style="bright_green",           # Bright green color for table border
-        box=ROUNDED,                  # Using rounded corners for the table
-        padding=(0, 1),                        # Padding inside cells (top/bottom, left/right)
-        title_justify="left"                 # Center-justify the title
-    )
-
-    # Define the columns with enhanced styling
-    table.add_column("File", style="bold yellow", justify="left", width=40, no_wrap=True)
-    table.add_column("Action", style="bold blue", justify="left", width=25)
-    table.add_column("Status", style="bold green", justify="left", width=35)
-
-    return table
-
 def execute_issue_processing_workflow(files, issues_dir, project_name):
     """
     Process each issue file and synchronize issues between markdown and database.
@@ -282,11 +233,12 @@ def execute_issue_processing_workflow(files, issues_dir, project_name):
         issues_dir (str): Directory path of the issues.
         project_name (str): Name of the project.
     """
+    console = console_interface.console
     # Inform the user that issue processing is starting
     console.print("Starting issue processing...", style="info")
 
     # Configure the table for displaying processing status
-    table = configure_rich_table()
+    table = console_interface.configure_table()
 
     # Establish a database session for issue processing
     with get_db_session() as session:
@@ -315,6 +267,7 @@ def execute_issue_processing_workflow(files, issues_dir, project_name):
     console.print("Issue processing completed.", style="success")
 
 def main():
+    console = console_interface.console
     try:
         with Halo(text='Initializing setup', spinner='dots'):
             project_root = find_project_root_directory()
