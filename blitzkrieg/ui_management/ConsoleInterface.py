@@ -5,6 +5,8 @@ from rich.theme import Theme
 import time
 from rich.box import ROUNDED
 
+from blitzkrieg.error_handling.ErrorManager import ErrorManager
+
 class ConsoleInterface:
     def __init__(self):
         self.custom_theme = Theme({
@@ -15,6 +17,7 @@ class ConsoleInterface:
             "header": "bold blue"
         })
         self.console = Console(theme=self.custom_theme)
+        self.error_manager = ErrorManager(self)
 
     def show_progress_bar(self, task_description, total):
         with Progress(
