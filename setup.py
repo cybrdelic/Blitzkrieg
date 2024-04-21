@@ -13,7 +13,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'blitz=blitzkrieg.main:main',
+            'blitz=blitzkrieg.cli.main:main',
         ],
     },
     author="Alex Figueroa",
