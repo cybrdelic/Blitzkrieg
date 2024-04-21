@@ -62,7 +62,7 @@ def execute_issue_processing_workflow(files, issues_dir, project_name):
                 if isinstance(file, list):
                     file = file[0]  # Assuming the file name is the first element
                 file_path = os.path.join(issues_dir, file)
-                issue_manager.handle_issue_file(file_path, project_name, session, table)
+                issue_manager.sync_issue_docs_to_db(file_path, project_name, session, table)
             except Exception as e:
                 console.print(f"Error in file {file}: {e}", style="error")
                 table.add_row(file, "Error", "[red]Failed[/red]")
@@ -70,7 +70,7 @@ def execute_issue_processing_workflow(files, issues_dir, project_name):
         # Synchronize the issues from database to markdown files
         console.print("Synchronizing database issues to Markdown...", style="warning")
         try:
-            issue_manager.synchronize_database_issues_to_markdown(issues_dir, project_name, session, table)
+            issue_manager.sync_db_issues_to_docs(issues_dir, project_name, session, table)
         except Exception as e:
             # Handle and display synchronization errors
             console.print(f"Synchronization error: {e}", style="error")
