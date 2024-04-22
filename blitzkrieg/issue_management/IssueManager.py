@@ -15,6 +15,11 @@ class IssueManager:
         self.markdown_manager = markdown_manager
         self.error_manager = console_interface.error_manager
 
+    def create_test_issue_in_db(self):
+        issue_dict = self.generate_issue_metadata(None, "Test Issue", "This is a test issue.", "Blitzkrieg")
+        with get_db_session() as session:
+            self.save_issue_to_database(issue_dict, "Blitzkrieg", session)
+
     def sync_issue_docs_to_db(self, file_path, project_name, session, table):
         try:
             issue_id, title, content = self.markdown_manager.extract_file_details(file_path)
@@ -38,10 +43,10 @@ class IssueManager:
         issue_markdown_files_issue_ids = [self.markdown_manager.extract_file_details(os.path.join(issues_dir, f))[0] for f in issue_markdown_files]
 
         for issue in issues_from_db:
-            if str(issue.id) not in issue_markdown_files_issue_ids:
-                file_name = f"{self.convert_title_to_snakecase(issue.title)}.md"
+             if str(issue.id) not in issue_markdown_files_issue_ids:
+                file_name = f"{self.convert_title_to_snakecase(issue.title)}_{str(issue.id)}.md"
                 file_path = os.path.join(issues_dir, file_name)
-                self.file_manager.write_file(file_path, f'{issue.id}\n{issue.title}\n\n{issue.description}')
+                self.file_manager.write_file(file_path, f'# {issue.title}\n\n{issue.description}')
                 table.add_row(file_name, "Synced", "[green]Markdown File Created[/green]")
 
 
@@ -107,7 +112,6 @@ class IssueManager:
             existing_issue.description = content if content_changed else existing_issue.description
             existing_issue.updated_at = datetime.now()
             session.commit()
-            self.file_manager.write_file(file_path, f'{issue_id}\n{title}\n\n{content}')
             return "Updated", "[orange]Updated in DB & Markdown[/orange]"
         return "Unchanged", "[blue]No Changes[/blue]"
 
