@@ -39,6 +39,14 @@ class {model_class}CRUD:
             session.commit()
         return {model_name}
 
+    @staticmethod
+    def get_next_index(session: Session):
+        {model_name} = session.query({model_class}).order_by({model_class}.index.desc()).first()
+        if {model_name}:
+            return {model_name}.index + 1
+        else:
+            return 1
+
 """
 
 for model_file in os.listdir(models_dir):

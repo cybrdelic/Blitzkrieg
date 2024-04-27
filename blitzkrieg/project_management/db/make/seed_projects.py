@@ -1,3 +1,4 @@
+import uuid
 from faker import Faker
 from blitzkrieg.project_management.db.connection import get_db_session, close_db_session
 from blitzkrieg.project_management.db.services.project_service import ProjectService
@@ -74,7 +75,7 @@ def add_project_from_project_name(session, project_name, description='', is_new_
     # lowercase project_name
     pip_package_name = project_name.lower()
 
-    project = ProjectService.create_project(
+    ProjectService().create_project(
         session=session,
         name=project_name,
         description=description,
@@ -83,7 +84,8 @@ def add_project_from_project_name(session, project_name, description='', is_new_
         is_deployed=is_deployed,
         deployment_date=deployment_date,
         pip_package_name=pip_package_name,
-        parent_id=None
+        parent_id=None,
+        id=uuid.uuid4()
     )
 
 

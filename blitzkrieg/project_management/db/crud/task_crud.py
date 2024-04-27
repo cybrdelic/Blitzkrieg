@@ -35,6 +35,14 @@ class TaskCRUD:
             session.commit()
         return task
 
+    @staticmethod
+    def get_next_index(session: Session):
+        task = session.query(Task).order_by(Task.index.desc()).first()
+        if task:
+            return task.index + 1
+        else:
+            return 1
+
 
 from sqlalchemy.orm import Session
 from blitzkrieg.project_management.db.models.task import Task
@@ -71,4 +79,12 @@ class TaskCRUD:
             session.delete(task)
             session.commit()
         return task
+
+    @staticmethod
+    def get_next_index(session: Session):
+        task = session.query(Task).order_by(Task.index.desc()).first()
+        if task:
+            return task.index + 1
+        else:
+            return 1
 

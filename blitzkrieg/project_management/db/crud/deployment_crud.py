@@ -35,6 +35,14 @@ class DeploymentCRUD:
             session.commit()
         return deployment
 
+    @staticmethod
+    def get_next_index(session: Session):
+        deployment = session.query(Deployment).order_by(Deployment.index.desc()).first()
+        if deployment:
+            return deployment.index + 1
+        else:
+            return 1
+
 
 from sqlalchemy.orm import Session
 from blitzkrieg.project_management.db.models.deployment import Deployment
@@ -71,4 +79,12 @@ class DeploymentCRUD:
             session.delete(deployment)
             session.commit()
         return deployment
+
+    @staticmethod
+    def get_next_index(session: Session):
+        deployment = session.query(Deployment).order_by(Deployment.index.desc()).first()
+        if deployment:
+            return deployment.index + 1
+        else:
+            return 1
 
