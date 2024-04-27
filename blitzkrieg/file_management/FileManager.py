@@ -19,6 +19,9 @@ class FileManager:
     def list_files_with_suffix(directory, suffix):
         return [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f)) and f.endswith(suffix)]
 
+    def delete_file(self, file_path):
+        os.remove(file_path)
+
     def append_uuid_to_file(self, file_path, id_uuid):
         # Assuming you want to rename the file to include the UUID at the beginning
         directory, filename = os.path.split(file_path)
