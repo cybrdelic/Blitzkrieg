@@ -1,18 +1,16 @@
-from sqlalchemy import String
 from sqlalchemy.orm import Session
-
-from ..crud.task_crud import TaskCRUD
 from ..models.task import Task
+from ..crud.task_crud import TaskCRUD
 
 class TaskService:
     @staticmethod
     def create_task(
         session: Session,
-        id: String,
-        description: String,
-        project_id: String,
-        is_completed: String,
-        completion_date: String
+        id: {'str'},
+        description: {'str'},
+        project_id: {'str'},
+        is_completed: {'str'},
+        completion_date: {'str'}
     ):
         task = Task(
             id=id, description=description, project_id=project_id, is_completed=is_completed, completion_date=completion_date

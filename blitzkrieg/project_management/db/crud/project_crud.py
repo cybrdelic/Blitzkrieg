@@ -59,10 +59,6 @@ class ProjectCRUD:
         return session.query(Project).filter(Project.id == project_id).first()
 
     @staticmethod
-    def get_project_by_name(session: Session, project_name: str):
-        return session.query(Project).filter(Project.name == project_name).first()
-
-    @staticmethod
     def get_all_projects(session: Session):
         return session.query(Project).all()
 
@@ -91,3 +87,7 @@ class ProjectCRUD:
             return project.index + 1
         else:
             return 1
+
+    @staticmethod
+    def get_project_by_name(session: Session, project_name: str):
+        return session.query(Project).filter(Project.name == project_name).first()

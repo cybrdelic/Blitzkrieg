@@ -49,14 +49,14 @@ def execute_issue_processing_workflow(files, issues_dir, project_name):
     """
     console = console_interface.console
     # Inform the user that issue processing is starting
-    console.print("Starting issue processing...", style="info")
+    console.print("Starting issue synchronization process...", style="info")
 
     # Configure the table for displaying processing status
     table = console_interface.configure_table()
 
     # Establish a database session for issue processing
     with get_db_session() as session:
-        for file in track(files, description="[green]Processing issues..."):
+        for file in track(files, description="[green]Synchronizing issues..."):
             try:
                 # Ensure 'file' is a string, not a list
                 if isinstance(file, list):
@@ -83,11 +83,10 @@ def execute_issue_processing_workflow(files, issues_dir, project_name):
 def main():
     console = console_interface.console
     try:
-        with Halo(text='Initializing setup', spinner='dots'):
+        with Halo(text='Fetching details from your local...', spinner='dots'):
             project_root = project_manager.find_project_root()
             project_name = os.path.basename(project_root)
             files, issues_dir = markdown_manager.fetch_markdown_files_list(project_root)
-            console.print('Setup complete')
         with project_manager.temporary_directory_change(project_root):
             execute_issue_processing_workflow(files, issues_dir, project_name)
         console.print("[bold green]All issues processed and stored successfully![/bold green]")

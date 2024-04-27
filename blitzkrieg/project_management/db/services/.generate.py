@@ -63,6 +63,10 @@ class {model_name.capitalize()}Service:
         return {model_name.capitalize()}CRUD.get_{table.name.lower()}(session, {table.name.lower()}_id)
 
     @staticmethod
+    def get_all_{table.name.lower()}s(session: Session):
+        return {model_name.capitalize()}CRUD.get_all_{table.name.lower()}s(session)
+
+    @staticmethod
     def get_next_index(session: Session):
         return {model_name.capitalize()}CRUD.get_next_index(session)
             """))

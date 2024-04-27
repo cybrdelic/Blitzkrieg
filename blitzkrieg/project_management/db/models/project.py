@@ -14,6 +14,7 @@ class Project(Base):
     deployment_date = Column(DateTime)  # The date and time of deployment
     pip_package_name = Column(String)  # The name of the pip package
     parent_id = Column(UUID, ForeignKey('project_management.project.id'))  # ID of the parent project
+    
 
     # Relationship to self to allow nested projects
     children = relationship('Project', backref='parent', remote_side=[id])

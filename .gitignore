@@ -12,3 +12,7 @@ blitzkrieg/initialization/config.env
 servers.json
 .docs/tickets/
 daily_reports/
+.docs/
+.docs/issues/
+.docs/*.md
+issues/

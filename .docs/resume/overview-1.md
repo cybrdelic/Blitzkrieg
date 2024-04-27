@@ -10,7 +10,7 @@ Blitzkrieg represents the forefront of software development technology, integrat
 
 **Current Capabilities:**
 
-1. **Automated Setup**: Blitzkrieg streamlines the initial setup process, allowing developers to quickly configure their environment using basic information like email, password, and username.
+1. **Automated Setup**: Blitzkrieg streamlines the initial setup process, allowing developers to quickly configure their environment using basic information like email, password, and username. (what kind of environment? I need to be more specific. its a local environment runnning pgadmin in docker server and postgres. a CLI and flask API system are included in this environment . i wouuldtn know what to call this tho. )
 
 2. **Hyper Database Creation**: Utilizing 'Blitz Init', Blitzkrieg automates the deployment of a Dockerized PostgreSQL and PgAdmin setup, simplifying database management and integration.
 

@@ -4,14 +4,22 @@ from blitzkrieg.project_management.db.models.issue import Issue
 class IssueCRUD:
     @staticmethod
     def create_issue(session: Session, issue: Issue):
-        session.add(issue)
-        session.commit()
-        session.refresh(issue)
-        return issue
+        try:
+            session.add(issue)
+            session.commit()
+            session.refresh(issue)
+            return issue
+        except Exception as e:
+            session.rollback()
+            raise e
 
     @staticmethod
     def get_issue_by_id(session: Session, issue_id: int):
-        return session.query(Issue).filter(Issue.id == issue_id).first()
+        try:
+            return session.query(Issue).filter(Issue.id == issue_id).first()
+        except Exception as e:
+            session.rollback()
+            raise e
 
     @staticmethod
     def get_all_projects(session: Session):
@@ -36,9 +44,21 @@ class IssueCRUD:
         return issue
 
     @staticmethod
+    def delete_all_issues(session: Session):
+        issues = session.query(Issue).all()
+        for issue in issues:
+            session.delete(issue)
+        session.commit()
+        return issues
+
+    @staticmethod
     def get_next_index(session: Session):
         issue = session.query(Issue).order_by(Issue.index.desc()).first()
         if issue:
             return issue.index + 1
         else:
             return 1
+
+    @staticmethod
+    def get_all_issues(session: Session):
+        return session.query(Issue).all()

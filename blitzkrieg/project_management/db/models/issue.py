@@ -7,6 +7,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from blitzkrieg.project_management.db.models.Base import Base
 class Issue(Base):
     __tablename__ = 'issue'
+
     __table_args__ = {'schema': 'project_management'}
 
     id = Column(UUID, primary_key=True)
@@ -17,5 +18,5 @@ class Issue(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     project_id = Column(UUID, ForeignKey('project_management.project.id'))
-
+    source = Column(Enum('docs', 'github', name='source_type'))
     project = relationship('Project')
