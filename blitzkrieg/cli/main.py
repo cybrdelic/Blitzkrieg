@@ -3,6 +3,8 @@ import click
 import subprocess
 import os
 from blitzkrieg.project_management.db.scripts.create_issues import main as create_issues
+from blitzkrieg.project_management.db.scripts.delete_issues import main as delete_issues
+from blitzkrieg.project_management.db.scripts.create_test_issue_in_db import main as create_issue_in_db
 
 from blitzkrieg.db.class_generation.DBClassGenerator import DBClassGenerator
 @click.group()
@@ -42,6 +44,20 @@ def update(system_to_update):
     if system_to_update == 'issues':
         create_issues()
 
+@main.command('test')
+@click.argument('test_name')
+def test(test_name):
+    if test_name == 'create_issue_in_db':
+        create_issue_in_db()
+
+@main.command('delete')
+@click.argument('entity_type')
+def delete(entity_type):
+    if entity_type == 'project':
+        handle_delete_project_command()
+    if entity_type == 'issue':
+        delete_issues()
+
 @main.command('setup-test')
 def setup_test():
     """Run the setup_test_env.sh script."""
@@ -51,13 +67,6 @@ def setup_test():
 def create_project():
     handle_create_project_command()
 
-@main.command('delete')
-@click.argument('entity_type')
-def delete_project(entity_type):
-    if entity_type == 'project':
-        handle_delete_project_command()
-    if entity_type == 'issue':
-        os.system("python3 blitzkrieg/project_management/db/make/delete_issues.py")
 
 @main.command('gen')
 @click.argument('what_to_generate')
