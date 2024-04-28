@@ -11,10 +11,9 @@ from blitzkrieg.db.class_generation.DBClassGenerator import DBClassGenerator
 def main():
     pass
 
-@main.command('pg')
-@click.argument('project_name')
-def init(project_name):
-    handle_pgadmin_postgres_init_command(project_name)
+@main.command('init')
+def init():
+    handle_pgadmin_postgres_init_command()
 
 @main.command("pg-all")
 def all():

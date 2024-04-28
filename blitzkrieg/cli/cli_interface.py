@@ -68,9 +68,9 @@ def create_servers_json(project_name_1, project_name_2):
     with open('servers.json', 'w') as f:
         json.dump(servers, f, indent=4)
 
-def handle_pgadmin_postgres_init_command(project_name):
+def handle_pgadmin_postgres_init_command():
     """Initialize the application."""
-    initialize_project(project_name)
+    initialize_project()
 
 def handle_pgadmin_postgres_init_all_command():
     """Initialize the application."""

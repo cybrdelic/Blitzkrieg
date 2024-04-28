@@ -6,16 +6,16 @@ from blitzkrieg.core.initialization.print_connection_details import print_connec
 from blitzkrieg.core.shared.run_command import run_command
 from .load_config import load_config
 
-def create_pgadmin_server_json(project_name: str):
+def create_pgadmin_server_json():
     server_json = {
         "Servers": {
             "1": {
             "Name": "PostgreSQL",
             "Group": "Servers",
-            "Host": f"{project_name}-postgres",
+            "Host": f"blitzkrieg-postgres",
             "Port": 5432,
-            "MaintenanceDB": project_name,
-            "Username": f"{project_name}-db-user",
+            "MaintenanceDB": "blitzkrieg",
+            "Username": f"blitzkrieg-db-user",
             "SSLMode": "prefer",
             "PassFile": "/var/lib/pgadmin/pgpassfile"
             }
@@ -25,13 +25,12 @@ def create_pgadmin_server_json(project_name: str):
     with open('servers.json', 'w') as f:
         json.dump(server_json, f)
 
-def create_docker_network(project_name: str):
-    network_name = f"{project_name}-network"
-    run_command(f"docker network create {network_name}")
+def create_docker_network():
+    run_command(f"docker network create blitzkrieg-network")
 
-def run_postgres_container(config, project_name: str):
-    network_name = f"{project_name}-network"
-    container_name = f"{project_name}-postgres"
+def run_blitzkrieg_postgres_container(config):
+    network_name = f"blitzkrieg-network"
+    container_name = f"blitzkrieg-postgres"
     db = config['db']
     postgres_db = f"POSTGRES_DB={db}"
     user = config['user']
@@ -45,15 +44,12 @@ def run_postgres_container(config, project_name: str):
     )
     run_command(postgres_run_command)
 
-def run_pgadmin_container(config, project_name: str):
-    network_name = f"{project_name}-network"
-    email, password = load_config()
-
+def run_pgadmin_container(config):
     pgadmin_run_command = (
-        f"docker run -d --name {project_name}-pgadmin -p {config['pgadmin_port']}:80 "
+        f"docker run -d --name blitzkrieg-pgadmin -p {config['pgadmin_port']}:80 "
         f"-e 'PGADMIN_DEFAULT_EMAIL=admin@example.com' "
         f"-e 'PGADMIN_DEFAULT_PASSWORD=0101' "
-        f"--network {network_name} "
+        f"--network blitzkrieg-network "
         "-v $(pwd)/servers.json:/pgadmin4/servers.json "
         "dpage/pgadmin4"
     )
@@ -76,7 +72,7 @@ def wait_for_pgadmin_to_start(pgadmin_port):
             print(f"An unexpected error occurred: {e}")
             break
 
-def create_pgpass_file(config, project_name: str):
+def create_pgpass_file(config):
     host = config['host']
     db = config['db']
     user = config['user']
@@ -84,33 +80,31 @@ def create_pgpass_file(config, project_name: str):
 
     pgpass_content = f"{host}:5432:{db}:{user}:{password}"
 
-    run_command(f"docker exec -i {project_name}-pgadmin sh -c 'echo \"{pgpass_content}\" > /var/lib/pgadmin/pgpassfile'")
+    run_command(f"docker exec -i blitzkrieg-pgadmin sh -c 'echo \"{pgpass_content}\" > /var/lib/pgadmin/pgpassfile'")
 
 def print_initialization_complete_message(config):
     print_connection_details(config)
     print(f"pgAdmin setup complete. Access it at http://localhost:{config['pgadmin_port']}")
 
-def setup_pgadmin(config, project_name: str):
-    create_pgadmin_server_json(project_name)
-    create_docker_network(project_name)
-    run_postgres_container(config, project_name)
-    run_pgadmin_container(config, project_name)
+def setup_pgadmin(config):
+    create_pgadmin_server_json()
+    create_docker_network()
+    run_pgadmin_container(config)
     wait_for_pgadmin_to_start(config['pgadmin_port'])
-    create_pgpass_file(config, project_name)
+    create_pgpass_file(config)
     print_initialization_complete_message(config)
 
 def initialize_project(
-    project_name: str,
     postgres_port: int = find_available_port(5432),
     pgadmin_port: int = find_available_port(5050)
 ):
 
     config = {
-        'host': f"{project_name}-postgres",  # Adjust to actual host if different
-        'db': project_name,
-        'user': f"{project_name}-db-user",
+        'host': f"blitzkrieg-postgres",  # Adjust to actual host if different
+        'db': 'blitzkrieg',
+        'user': f"blitzkrieg-db-user",
         'password': '0101',
         'postgres_port': postgres_port,
         'pgadmin_port': pgadmin_port
     }
-    setup_pgadmin(config, project_name)
+    setup_pgadmin(config)
