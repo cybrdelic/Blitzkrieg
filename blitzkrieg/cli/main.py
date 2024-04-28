@@ -2,6 +2,7 @@ from blitzkrieg.cli.cli_interface import handle_create_project_command, handle_d
 import click
 import subprocess
 import os
+from blitzkrieg.core.initialization.project_init import initialize_blitzkrieg
 from blitzkrieg.project_management.db.scripts.create_issues import main as create_issues
 from blitzkrieg.project_management.db.scripts.delete_issues import main as delete_issues
 from blitzkrieg.project_management.db.scripts.create_test_issue_in_db import main as create_issue_in_db
@@ -13,7 +14,7 @@ def main():
 
 @main.command('init')
 def init():
-    handle_pgadmin_postgres_init_command()
+    initialize_blitzkrieg()
 
 @main.command("pg-all")
 def all():
