@@ -1,6 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from blitzkrieg.codebase_scaffolding.config.config import load_user_details
-from blitzkrieg.core.initialization.project_init import initialize_project
+from blitzkrieg.core.initialization.project_init import initialize_blitzkrieg
 import socket
 import json
 import os
@@ -70,7 +70,7 @@ def create_servers_json(project_name_1, project_name_2):
 
 def handle_pgadmin_postgres_init_command():
     """Initialize the application."""
-    initialize_project()
+    initialize_blitzkrieg()
 
 def handle_pgadmin_postgres_init_all_command():
     """Initialize the application."""
