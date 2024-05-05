@@ -1,10 +1,16 @@
 import json
 import time
+from blitzkrieg.core.initialization.docker_compose_manager import DockerComposeManager
+from blitzkrieg.core.initialization.docker_manager import DockerManager
+from blitzkrieg.core.initialization.pgadmin_manager import PgAdminManager
+from blitzkrieg.core.initialization.postgres_manager import BlitzkriegDbManager
 from blitzkrieg.core.networking.port_allocation import find_available_port
 import requests
 from blitzkrieg.core.initialization.print_connection_details import print_connection_details
 from blitzkrieg.core.shared.run_command import run_command
+from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
 from .load_config import load_config
+import os
 
 def create_pgadmin_server_json():
     server_json = {
@@ -24,9 +30,6 @@ def create_pgadmin_server_json():
 
     with open('servers.json', 'w') as f:
         json.dump(server_json, f)
-
-def create_docker_network():
-    run_command(f"docker network create blitzkrieg-network")
 
 def run_blitzkrieg_postgres_container(config):
     network_name = f"blitzkrieg-network"
@@ -88,23 +91,13 @@ def print_initialization_complete_message(config):
 
 def setup_pgadmin(config):
     create_pgadmin_server_json()
-    create_docker_network()
     run_pgadmin_container(config)
     wait_for_pgadmin_to_start(config['pgadmin_port'])
     create_pgpass_file(config)
     print_initialization_complete_message(config)
 
-def initialize_project(
-    postgres_port: int = find_available_port(5432),
-    pgadmin_port: int = find_available_port(5050)
-):
-
-    config = {
-        'host': f"blitzkrieg-postgres",  # Adjust to actual host if different
-        'db': 'blitzkrieg',
-        'user': f"blitzkrieg-db-user",
-        'password': '0101',
-        'postgres_port': postgres_port,
-        'pgadmin_port': pgadmin_port
-    }
-    setup_pgadmin(config)
+def initialize_blitzkrieg():
+    project_dir = os.getcwd()
+    manager = DockerComposeManager(directory=project_dir)
+    manager.create_compose_file()
+    manager.deploy_services()
