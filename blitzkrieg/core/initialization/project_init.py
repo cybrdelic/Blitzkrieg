@@ -1,6 +1,5 @@
 import json
 import time
-from blitzkrieg.core.initialization.docker_compose_manager import DockerComposeManager
 from blitzkrieg.core.initialization.docker_manager import DockerManager
 from blitzkrieg.core.initialization.pgadmin_manager import PgAdminManager
 from blitzkrieg.core.initialization.postgres_manager import BlitzkriegDbManager
@@ -10,7 +9,6 @@ from blitzkrieg.core.initialization.print_connection_details import print_connec
 from blitzkrieg.core.shared.run_command import run_command
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
 from .load_config import load_config
-import os
 
 def create_pgadmin_server_json():
     server_json = {
@@ -97,7 +95,7 @@ def setup_pgadmin(config):
     print_initialization_complete_message(config)
 
 def initialize_blitzkrieg():
-    project_dir = os.getcwd()
-    manager = DockerComposeManager(directory=project_dir)
-    manager.create_compose_file()
-    manager.deploy_services()
+    docker_manager = DockerManager()
+    docker_manager.create_docker_network("blitzkrieg-network")
+    postgres_port = BlitzkriegDbManager().initialize()
+    PgAdminManager(postgres_port=postgres_port).setup_pgadmin()
