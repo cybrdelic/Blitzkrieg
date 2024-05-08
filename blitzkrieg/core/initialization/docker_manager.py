@@ -30,15 +30,14 @@ class DockerManager:
         failure_message="Container did not start successfully.",
         success_message="Container is ready."
     )
-    def wait_for_container(self, timeout=60):
+    def wait_for_container(self, container_name, timeout=60):
         """Wait for container to be in running state."""
         try:
             for _ in range(timeout):
-                container = self.docker_manager.client.containers.get(self.container_name)
+                container = self.client.containers.get(container_name)
                 if container.status == 'running':
                     return True
                 time.sleep(1)
             return False
         except NotFound as e:
-            self.error_manager.display_error(f"Container not found: {str(e)}")
             return False

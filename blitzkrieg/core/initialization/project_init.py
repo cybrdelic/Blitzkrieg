@@ -96,6 +96,10 @@ def setup_pgadmin(config):
 
 def initialize_blitzkrieg():
     docker_manager = DockerManager()
-    docker_manager.create_docker_network("blitzkrieg-network")
+    console = ConsoleInterface()
+    console.display_step('Docker Network Creation', 'Creating Docker network for Blitzkrieg...')
+    docker_manager.create_docker_network('blitzkrieg-network')
+
+
     postgres_port = BlitzkriegDbManager().initialize()
     PgAdminManager(postgres_port=postgres_port).setup_pgadmin()

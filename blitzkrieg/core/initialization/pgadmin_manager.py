@@ -2,34 +2,42 @@ import json
 import os
 import tarfile
 import io
+import time
 from docker.errors import ContainerError, APIError, NotFound
-
 from blitzkrieg.core.initialization.docker_manager import DockerManager
 from blitzkrieg.core.networking.port_allocation import find_available_port
 from blitzkrieg.error_handling.ErrorManager import ErrorManager
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
+from blitzkrieg.ui_management.decorators import with_spinner
 
 class PgAdminManager:
     def __init__(self, postgres_port, pgadmin_port=None):
         self.docker_manager = DockerManager()
         self.network_name = 'blitzkrieg-network'
         self.container_name = "blitzkrieg-pgadmin"
-        self.pgadmin_port = pgadmin_port if pgadmin_port else find_available_port(5050)
+        self.pgadmin_port = pgadmin_port if pgadmin_port else find_available_port()
         self.postgres_port = postgres_port
-        self.error_manager = ErrorManager(ConsoleInterface())
+        self.console_interface = ConsoleInterface()
+        self.error_manager = ErrorManager(self.console_interface)
 
     def setup_pgadmin(self):
-        if not self.start_pgadmin_container():
-            return False
-        if not self.upload_server_configuration():
-            return False
-        self.error_manager.display_success("PgAdmin setup completed successfully.")
+        self.console_interface.display_step("PgAdmin Container Initialization", "Starting the PgAdmin setup process.")
+        self.start_pgadmin_container()
+        self.docker_manager.wait_for_container(self.container_name)
+        self.console_interface.display_step("PgAdmin Server Configuration", "Configuring postgres servers in PgAdmin...")
+        self.upload_server_configuration()
+
+
         return True
 
+    @with_spinner(
+            message="Starting PgAdmin container...",
+            failure_message="Failed to start PgAdmin container.",
+            success_message="PgAdmin container started successfully."
+    )
     def start_pgadmin_container(self):
         try:
-            self.docker_manager.create_docker_network(self.network_name)
-            container = self.docker_manager.client.containers.run(
+            self.docker_manager.client.containers.run(
                 "dpage/pgadmin4",
                 name=self.container_name,
                 ports={'80/tcp': self.pgadmin_port},
@@ -38,12 +46,18 @@ class PgAdminManager:
                 network=self.network_name,
                 detach=True
             )
-            self.error_manager.display_success("pgAdmin container started successfully.")
             return True
         except (ContainerError, APIError, NotFound) as e:
             self.error_manager.display_error(f"Failed to start container: {str(e)}")
             return False
 
+
+
+    @with_spinner(
+        message="Uploading server configuration to PgAdmin...",
+        failure_message="Failed to upload server configuration.",
+        success_message="Server configuration uploaded successfully."
+    )
     def upload_server_configuration(self):
         servers_config = {
             "Servers": {
@@ -63,10 +77,8 @@ class PgAdminManager:
             tar_stream = self.create_tar_stream(json.dumps(servers_config), 'servers.json')
             container = self.docker_manager.client.containers.get(self.container_name)
             container.put_archive(os.path.dirname(path), tar_stream)
-            self.error_manager.display_success("Server configuration uploaded successfully.")
             return True
         except Exception as e:
-            self.error_manager.display_error(f"Failed to upload server configuration: {str(e)}")
             return False
 
     def create_tar_stream(self, content, filename):
