@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from blitzkrieg.error_handling.ErrorManager import ErrorManager
 from blitzkrieg.project_management.db.connection import get_db_session
 from blitzkrieg.project_management.db.services.issues_service import IssueService
 from blitzkrieg.project_management.db.crud.issue_crud import IssueCRUD
@@ -13,7 +14,7 @@ class IssueManager:
         self.file_manager = file_manager
         self.console_interface = console_interface
         self.markdown_manager = markdown_manager
-        self.error_manager = console_interface.error_manager
+        self.error_manager = ErrorManager(self.console_interface)
 
     def create_test_issue_in_db(self):
         issue_dict = self.generate_issue_metadata(None, "Test Issue", "This is a test issue.", "Blitzkrieg")

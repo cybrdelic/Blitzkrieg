@@ -1,36 +1,42 @@
+from alive_progress import alive_bar
+from halo import Halo
 from rich.console import Console
-from rich.progress import Progress, BarColumn
 from rich.table import Table
 from rich.theme import Theme
+from rich.panel import Panel
 import time
-from rich.box import ROUNDED
-
-from blitzkrieg.error_handling.ErrorManager import ErrorManager
+from rich.text import Text
 
 class ConsoleInterface:
     def __init__(self):
-        self.custom_theme = Theme({
-            "info": "dim cyan",
-            "warning": "magenta",
-            "error": "bold red",
-            "success": "bold green",
-            "header": "bold blue"
-        })
-        self.console = Console(theme=self.custom_theme)
-        self.error_manager = ErrorManager(self)
+        self.console = Console()
 
-    def show_progress_bar(self, task_description, total):
-        with Progress(
-            "[progress.description]{task.description}",
-            BarColumn(bar_width=None),
-            "[progress.percentage]{task.percentage:>3.0f}%",
-            console=self.console,
-            transient=True
-        ) as progress:
-            task = progress.add_task(task_description, total=total)
-            while not progress.finished:
-                progress.update(task, advance=0.1)
-                time.sleep(0.1)
+    def show_progress(self, total, message, check_function=None):
+        """
+        Shows a progress bar and optionally checks a condition at each step.
+        Returns True if the condition is met before completion, False otherwise.
+        """
+        with alive_bar(total, title=message, bar="blocks", spinner="dots") as bar:
+            for _ in range(total):
+                time.sleep(1)  # Simulate time passing
+                if check_function and check_function():
+                    self.console.print("[bold green]PostgreSQL is now ready.[/bold green] \n")
+                    return True
+                bar()  # Update the progress bar
+        return False
+
+    def show_spinner(self, action, message, success_message="Succeeded", failure_message="Failed", spinner='dots'):
+        with Halo(text=message, spinner=spinner, color='magenta'):
+            try:
+                result = action()  # Execute the passed function
+                if result:
+                    self.console.print(f"[bold green]{success_message}[/bold green]")
+                else:
+                    self.console.print(f"[bold red]{failure_message}[/bold red]")
+                return result
+            except Exception as e:
+                self.console.print(f"[bold red]{failure_message}: {str(e)}[/bold red]")
+                return False
 
     def configure_table(self):
         table = Table(
@@ -39,7 +45,6 @@ class ConsoleInterface:
             header_style="bold magenta",
             title_style="bold cyan",
             border_style="bright_green",
-            box=ROUNDED,
             padding=(0, 1),
             title_justify="left"
         )
@@ -48,4 +53,15 @@ class ConsoleInterface:
         table.add_column("Status", style="bold green", justify="left", width=35)
         return table
 
-    # Additional methods for console interaction
+    def display_notice(self, message, style="bold yellow"):
+        panel = Panel(message, style=style)
+        self.console.print(panel)
+
+    def display_step(self, title, description, is_successful=True):
+        self.console.print(f"[bold blue]{title}[/bold blue]")
+        self.console.print(f"{description}")
+
+    def show_status_chip(self, message, success=True):
+        icon = "✔️" if success else "❌"
+        color = "bold green" if success else "bold red"
+        self.console.print(f"[{color}]{icon} {message}[/{color}]")
