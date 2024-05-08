@@ -2,21 +2,15 @@
 
 ## Streamline Your Software Development from Conception to Deployment
 
-Blitzkrieg is a powerful tool designed to simplify and accelerate the process of setting up and managing software development projects. By automating the initialization of command-line interface projects and configuring PostgreSQL databases, Blitzkrieg allows developers to focus on what they do best—creating innovative software.
+Blitzkrieg simplifies software development by automating CLI project setups and PostgreSQL database configurations. This allows developers to focus more on innovation and less on setup.
+
 
 ## Key Features
 
-### Project Initialization
-Automatically set up new CLI projects with predefined templates that include all necessary configurations, significantly reducing the setup time and complexity.
-
-### PostgreSQL Database Configuration
-Effortlessly configure PostgreSQL databases for your projects, ensuring they are optimized for performance and security from the start.
-
-### Issue Synchronization
-Keep your project's issues synchronized across your project database, GitHub, and local documentation in your code editor, ensuring consistency and traceability.
-
-### Scalability
-Quickly replicate setups for multiple projects, each tailored to specific requirements, with just a few commands.
+- **Project Initialization:** Automate CLI project setups with predefined templates to reduce setup time.
+- **PostgreSQL Database Configuration:** Ensure databases are optimized for performance and security from the start.
+- **Issue Synchronization:** Maintain issue synchronization across databases, GitHub, and local documentation.
+- **Scalability:** Easily replicate setups across multiple projects with minimal commands.
 
 ## Getting Started
 
@@ -34,16 +28,26 @@ pip install blitzkrieg
 
 ### Usage
 
-#### Setting Up a New Project
-To initialize a new CLI project along with a PostgreSQL database:
-
+#### Setting up Blitzkrieg environment
+To initialize Blitzkrieg on your local:
 ```bash
 blitz init
 ```
 
+#### Setting Up a New Project
+To initialize a new CLI project:
+```bash
+blitz create cli <project_name>
+```
+To initialize a new CLI project along with a PostgreSQL database:
+
+```bash
+blitz create cli <project_name> --db
+```
+
 This command will set up your new project directory and link it to a newly configured PostgreSQL database based on best practices for development.
 
-#### Synchronizing Issues
+#### Synchronizing Issues and Documentation
 To ensure all your issues are up-to-date across different platforms:
 
 ```bash
@@ -51,6 +55,28 @@ blitz sync
 ```
 
 This will update your project management tools and local documentation to reflect the latest changes and issues.
+
+## Core Innovations
+
+- **Autonomous Software Lifecycle Management**: Automates every phase of development, from environment setup to production deployment.
+- **Advanced Project Extrapolation**: Utilizes AI to analyze project specifications and automatically generate development tasks and manage timelines.
+- **AI-Powered Code Generation**: Seamlessly integrates with AI systems like Sweep AI to execute development tasks, including coding and testing.
+- **Intuitive Sync between Documentation and Execution**: Dynamically links project documentation in the `.docs` directory with actionable development tasks, ensuring documentation always aligns with the current project state.
+
+## Objectives
+
+- **Reduce Manual Effort**: Significantly cut the manual tasks required in software development.
+- **Accelerate Project Lifecycle**: Speed up the process from concept to market, enabling faster releases and updates.
+- **Enhance Accuracy and Efficiency**: Improve project management and execution with AI-driven predictions and task automation.
+- **Achieve Full Development Automation**: Integrate cutting-edge AI to automate not just planning and design but also execution and deployment.
+
+## Design Principles
+
+- **Full Autonomy**: Designed to operate independently, learning and adapting from ongoing projects without needing human guidance.
+- **Efficiency and Speed**: Optimizes all processes to minimize development time and resource consumption.
+- **Scalability**: Capable of managing projects of any size, from small startups to large enterprise applications.
+- **Multiple Interaction Modes**: Offers flexible interaction through CLI commands, document editing, or direct inputs, catering to various user preferences.
+- **Continuous Innovation**: Regularly updated with the latest technological advancements to stay at the forefront of the development tools industry.
 
 ## Vision for the Future
 Blitzkrieg is not just a project initialization tool—it's evolving into a comprehensive development management system. Future enhancements will focus on:
