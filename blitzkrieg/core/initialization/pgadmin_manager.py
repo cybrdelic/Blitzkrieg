@@ -11,14 +11,21 @@ from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
 from blitzkrieg.ui_management.decorators import with_spinner
 
 class PgAdminManager:
-    def __init__(self, postgres_port, pgadmin_port=None):
+    def __init__(self, postgres_port, pgadmin_port=None, workspace_name: str = None):
         self.docker_manager = DockerManager()
-        self.network_name = 'blitzkrieg-network'
-        self.container_name = "blitzkrieg-pgadmin"
+        self.workspace_name = workspace_name
+        self.network_name = f"{self.workspace_name}-network"
+        self.container_name = f"{self.workspace_name}-pgadmin"
         self.pgadmin_port = pgadmin_port if pgadmin_port else find_available_port()
         self.postgres_port = postgres_port
         self.console_interface = ConsoleInterface()
         self.error_manager = ErrorManager(self.console_interface)
+        self.postgres_server_config_name = f"{self.workspace_name.capitalize()} PostgreSQL"
+        self.postgres_server_config_host = f"{self.workspace_name}-postgres"
+        self.postgres_server_config_username = f"{self.workspace_name}-db-user"
+        self.pgadmin_binding_config_path = '/pgadmin4'
+        self.pgadmin_login_email = "admin@example.com"
+        self.pgadmin_login_password = "admin"
 
     def setup_pgadmin(self):
         self.console_interface.display_step("PgAdmin Container Initialization", "Starting the PgAdmin setup process.")
@@ -42,7 +49,7 @@ class PgAdminManager:
                 name=self.container_name,
                 ports={'80/tcp': self.pgadmin_port},
                 environment={"PGADMIN_DEFAULT_EMAIL": "admin@example.com", "PGADMIN_DEFAULT_PASSWORD": "admin"},
-                volumes={f"{self.network_name}_data": {'bind': '/pgadmin4', 'mode': 'rw'}},
+                volumes={f"{self.network_name}_data": {'bind': self.pgadmin_binding_config_path, 'mode': 'rw'}},
                 network=self.network_name,
                 detach=True
             )
@@ -62,18 +69,18 @@ class PgAdminManager:
         servers_config = {
             "Servers": {
                 "1": {
-                    "Name": "Blitzkrieg PostgreSQL",
+                    "Name": self.postgres_server_config_name,
                     "Group": "Servers",
-                    "Host": "blitzkrieg-postgres",
+                    "Host": self.postgres_server_config_host,
                     "Port": self.postgres_port,
-                    "MaintenanceDB": "blitzkrieg",
-                    "Username": "blitzkrieg-db-user",
+                    "MaintenanceDB": self.workspace_name,
+                    "Username": self.postgres_server_config_username,
                     "SSLMode": "prefer"
                 }
             }
         }
         try:
-            path = '/pgadmin4/servers.json'
+            path = f"/pgadmin4/servers.json"
             tar_stream = self.create_tar_stream(json.dumps(servers_config), 'servers.json')
             container = self.docker_manager.client.containers.get(self.container_name)
             container.put_archive(os.path.dirname(path), tar_stream)

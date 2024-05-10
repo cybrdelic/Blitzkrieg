@@ -7,15 +7,16 @@ import time
 from docker.errors import NotFound
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
 from blitzkrieg.ui_management.decorators import with_spinner
+import sqlalchemy
 
-class BlitzkriegDbManager:
-    def __init__(self, port):
-        self.project_name = "blitzkrieg"  # Hardcoded project name
-        self.db_user = 'blitzkrieg-db-user'
+class WorkspaceDbManager:
+    def __init__(self, port, workspace_name: str =None):
+        self.workspace_name = workspace_name
+        self.db_user = f"{self.workspace_name}-db-user"
         self.db_password = '0101'
         self.db_port = port
-        self.network_name = f"{self.project_name}-network"
-        self.container_name = f"{self.project_name}-postgres"
+        self.network_name = f"{self.workspace_name}-network"
+        self.container_name = f"{self.workspace_name}-postgres"
         self.image_name = "postgres:latest"
         self.console_interface = ConsoleInterface()
         self.docker_manager = DockerManager()
@@ -23,13 +24,13 @@ class BlitzkriegDbManager:
     def initialize(self):
         self.console_interface.display_step("PostgreSQL Container Initialization", "Setting up the PostgreSQL container.")
         self.run_postgres_container()
-        self.wait_for_container()
+        self.docker_manager.wait_for_container(self.container_name)
         return self.db_port
 
     def run_postgres_container(self):
         try:
             env_vars = {
-                "POSTGRES_DB": self.project_name,
+                "POSTGRES_DB": self.workspace_name,
                 "POSTGRES_USER": self.db_user,
                 "POSTGRES_PASSWORD": self.db_password,
                 "POSTGRES_INITDB_ARGS": "--auth-local=md5"
@@ -44,20 +45,12 @@ class BlitzkriegDbManager:
         except Exception as e:
             return False
             # After running, consider adding a small delay or check to ensure the database initializes fully before continuing
-    @with_spinner(
-        message="Waiting for Postgres container to be in running state...",
-        failure_message="Container did not start successfully.",
-        success_message="Container is ready."
-    )
-    def wait_for_container(self, timeout=60):
-        """Wait for container to be in running state."""
-        try:
-            for _ in range(timeout):
-                container = self.docker_manager.client.containers.get(self.container_name)
-                if container.status == 'running':
-                    return True
-                time.sleep(1)
-            return False
-        except NotFound as e:
-            self.error_manager.display_error(f"Container not found: {str(e)}")
-            return False
+    # get connection details to genrate the connection string for this database to connection to a session to setup the sqlaclhemy engibne and schema
+    def get_connection_details(self):
+        return {
+            "database": self.workspace_name,
+            "user": self.db_user,
+            "password": self.db_password,
+            "host": self.container_name,
+            "port": self.db_port
+        }

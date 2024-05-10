@@ -2,7 +2,7 @@ import json
 import time
 from blitzkrieg.core.initialization.docker_manager import DockerManager
 from blitzkrieg.core.initialization.pgadmin_manager import PgAdminManager
-from blitzkrieg.core.initialization.postgres_manager import BlitzkriegDbManager
+from blitzkrieg.core.initialization.postgres_manager import WorkspaceDbManager
 from blitzkrieg.core.networking.port_allocation import find_available_port
 import requests
 from blitzkrieg.core.initialization.print_connection_details import print_connection_details
@@ -101,5 +101,5 @@ def initialize_blitzkrieg():
     docker_manager.create_docker_network('blitzkrieg-network')
 
 
-    postgres_port = BlitzkriegDbManager().initialize()
+    postgres_port = WorkspaceDbManager().initialize()
     PgAdminManager(postgres_port=postgres_port).setup_pgadmin()

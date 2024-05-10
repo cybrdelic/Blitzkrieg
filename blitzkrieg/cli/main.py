@@ -7,15 +7,20 @@ from blitzkrieg.initialization.main import BlitzkriegInitializer
 from blitzkrieg.project_management.db.scripts.create_issues import main as create_issues
 from blitzkrieg.project_management.db.scripts.delete_issues import main as delete_issues
 from blitzkrieg.project_management.db.scripts.create_test_issue_in_db import main as create_issue_in_db
-
 from blitzkrieg.db.class_generation.DBClassGenerator import DBClassGenerator
+from blitzkrieg.project_management.db.scripts import create_issues, delete_issues
 @click.group()
 def main():
     pass
 
 @main.command('init')
-def init():
-    BlitzkriegInitializer().run()
+@click.argument("workspace_name")
+def init(workspace_name):
+    BlitzkriegInitializer(workspace_name).setup_db_environment()
+
+@main.command('setup-db')
+def setup_db():
+    BlitzkriegInitializer().setup_db_schema()
 
 @main.command("pg-all")
 def all():
