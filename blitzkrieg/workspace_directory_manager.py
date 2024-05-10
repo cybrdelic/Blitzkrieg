@@ -5,12 +5,31 @@ from blitzkrieg.ui_management.decorators import with_spinner
 import subprocess
 import time
 
+from blitzkrieg.utils.run_command import run_command
+
 class WorkspaceDirectoryManager:
     def __init__(self, db_manager, workspace_name: str = None):
         self.workspace_name = workspace_name
         self.console = ConsoleInterface()
         self.workspace_path = os.path.join(os.getcwd(), self.workspace_name)
         self.db_manager = db_manager
+
+    def teardown(self):
+        self.console.display_step('Tearing Down Workspace Directory', 'Tearing down workspace directory...')
+        self.delete_workspace_directory()
+
+    @with_spinner(
+        message="Deleting workspace directory ...",
+        failure_message="Failed to delete workspace directory.",
+        success_message="Workspace directory deleted successfully."
+    )
+    def delete_workspace_directory(self):
+        try:
+            subprocess.run(['rm', '-rf', self.workspace_path], check=True)
+            return True
+        except subprocess.CalledProcessError as e:
+            self.console.display_notice(f"Failed to delete workspace directory: {str(e)}")
+            return False
 
     def create_dir(self, dir_path):
         os.makedirs(dir_path, exist_ok=True)
@@ -41,6 +60,104 @@ class WorkspaceDirectoryManager:
         except Exception as e:
             self.console.display_notice(f"Failed to create /projects directory inside of workspace: {str(e)}")
             return False
+    @with_spinner(
+        message="Creating /sqlalchemy_models directory inside of workspace",
+        failure_message="Failed to create /sqlalchemy_models directory inside of workspace.",
+        success_message="/sqlalchemy_models directory created successfully."
+    )
+    def create_sqlalchemy_models_directory(self):
+        try:
+            sqlalchemy_models_path = os.path.join(self.workspace_path, 'sqlalchemy_models')
+            self.create_dir(sqlalchemy_models_path)
+            self.create_workspace_details_table_sqlalchemy_model()
+            self.create_project_table_sqlalchemy_model()
+            self.modify_env_dot_py_to_import_models_and_configure_target_metadata()
+            self.auto_generate_initial_alembic_migration_script()
+            return True
+        except Exception as e:
+            self.console.display_notice(f"Failed to create /sqlalchemy_models directory inside of workspace: {str(e)}")
+            return False
+
+    def create_sql_alchemy_model_file(self, model_name):
+        try:
+            with open(os.path.join(self.workspace_path, 'sqlalchemy_models', f'{model_name}.py'), 'w') as f:
+                f.write(f"""
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
+Base = declarative_base()
+
+class {model_name}(Base):
+    __tablename__ = '{model_name.lower()}'
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    description = Column(String)
+
+    def __repr__(self):
+        return f'<{model_name}(name={{self.name}}, description={{self.description}})>'
+""")
+
+            return True
+        except Exception as e:
+            self.console.display_notice(f"Failed to create SQLAlchemy model file: {str(e)}")
+            return False
+    @with_spinner(
+        message="Creating SQLAlchemy model for workspace...",
+        failure_message="Failed to create SQLAlchemy model for workspace.",
+        success_message="SQLAlchemy model for workspace created successfully."
+    )
+    def create_workspace_details_table_sqlalchemy_model(self):
+        try:
+            self.console.display_step('Creating SQLAlchemy Model', 'Creating a SQLAlchemy model for the workspace...')
+            self.create_sql_alchemy_model_file('WorkspaceDetails')
+            return True
+        except Exception as e:
+            self.console.display_notice(f"Failed to create SQLAlchemy model for workspace details: {str(e)}")
+            return False
+
+    def create_project_table_sqlalchemy_model(self):
+        try:
+            self.console.display_step('Creating SQLAlchemy Model', 'Creating a SQLAlchemy model for the project table...')
+            self.create_sql_alchemy_model_file('Project')
+            return True
+        except Exception as e:
+            self.console.display_notice(f"Failed to create SQLAlchemy model for project table: {str(e)}")
+            return False
+
+    @with_spinner(
+        message="Creating and modifying env.py...",
+        failure_message="Failed to create and modify env.py.",
+        success_message="env.py created and modified successfully."
+    )
+    def modify_env_dot_py_to_import_models_and_configure_target_metadata(self):
+        try:
+            with open(os.path.join(self.workspace_path, 'env.py'), 'w') as f:
+                f.write(f'''
+from sqlalchemy_models import Base
+from sqlalchemy import create_engine
+from alembic import context
+config = context.config
+config.set_main_option('sqlalchemy.url', 'sqlite:///db.sqlite')
+target_metadata = Base.metadata'''
+                        )
+            return True
+        except Exception as e:
+            self.console.display_notice(f"Failed to modify env.py to import models and configure target metadata: {str(e)}")
+            return False
+
+    @with_spinner(
+        message="Auto-generating initial Alembic migration script...",
+        failure_message="Failed to auto-generate initial Alembic migration script.",
+        success_message="Initial Alembic migration script auto-generated successfully."
+    )
+    def auto_generate_initial_alembic_migration_script(self):
+        try:
+            time.sleep(5)
+            run_command('alembic revision --autogenerate -m "Initial"')
+            return True
+        except subprocess.CalledProcessError as e:
+            self.console.display_notice(f"Failed to auto-generate initial Alembic migration script: {str(e)}")
+            return False
+
 
     @with_spinner(
         message="Installing Alembic...",

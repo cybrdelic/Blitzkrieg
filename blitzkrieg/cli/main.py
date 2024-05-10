@@ -9,8 +9,14 @@ def main():
 
 @main.command('init')
 @click.argument("workspace_name")
-def init(workspace_name):
-    WorkspaceManager(workspace_name).setup_db_environment()
+@click.argument("is_reverse")
+def init(workspace_name, is_reverse):
+    if is_reverse == 'reverse':
+        WorkspaceManager(workspace_name).teardown_workspace()
+    else:
+        WorkspaceManager(workspace_name).create_workspace()
+
+
 
 @main.command('setup-db')
 def setup_db():

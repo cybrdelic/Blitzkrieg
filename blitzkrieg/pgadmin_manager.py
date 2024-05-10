@@ -27,6 +27,11 @@ class PgAdminManager:
         self.pgadmin_login_email = "admin@example.com"
         self.pgadmin_login_password = "admin"
 
+    def teardown(self):
+        self.console_interface.display_step("PgAdmin Container Teardown", "Tearing down the PgAdmin container...")
+        self.docker_manager.remove_container(self.container_name)
+        self.docker_manager.remove_all_volumes()
+
     def setup_pgadmin(self):
         self.console_interface.display_step("PgAdmin Container Initialization", "Starting the PgAdmin setup process.")
         self.start_pgadmin_container()

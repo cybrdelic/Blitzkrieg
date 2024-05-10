@@ -25,19 +25,28 @@ class WorkspaceManager:
         self.docker_network_name = f"{self.workspace_name}-network"
         self.cwd = os.getcwd()
 
-    def setup_db_environment(self):
-        self.console.display_step('Creating Workspace Directory', 'Creating workspace directory for Blitzkrieg...')
-        self.setup_workspace()
+    def teardown_workspace(self):
+        self.console.display_step('Tearing Down Workspace', 'Tearing down Blitzkrieg workspace...')
+        self.workspace_db_manager.teardown()
+        self.pgadmin_manager.teardown()
+        self.docker_manager.remove_docker_network(self.docker_network_name)
+        self.workspace_directory_manager.teardown()
+
+    def create_workspace(self):
+
         self.console.display_step('Docker Network Creation', 'Creating Docker network for Blitzkrieg...')
         self.docker_manager.create_docker_network(self.docker_network_name)
         self.workspace_db_manager.initialize()
         self.pgadmin_manager.setup_pgadmin()
+        self.console.display_step('Creating Workspace Directory', 'Creating workspace directory for Blitzkrieg...')
+        self.setup_workspace()
 
     def setup_db_schema(self):
         self.console.display_step('Database Schema Initialization', 'Setting up the database schema...')
         self.workspace_db_manager.setup_schema()
 
     def setup_workspace(self):
+        self.workspace_directory_manager.create_workspace_directory()
         self.workspace_directory_manager.create_projects_directory()
-        self.workspace_directory_manager.create_projects_directory()
+        self.workspace_directory_manager.create_sqlalchemy_models_directory()
         self.workspace_directory_manager.setup_alembic()

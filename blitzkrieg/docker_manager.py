@@ -41,3 +41,47 @@ class DockerManager:
             return False
         except NotFound as e:
             return False
+
+    def remove_container(self, container_name):
+        """Remove a Docker container."""
+        try:
+            self.console.print(f"Removing container {container_name}...")
+            container = self.client.containers.get(container_name)
+            container.remove(force=True)
+            return True
+        except NotFound as e:
+            return False
+
+    def remove_volume(self, volume_name):
+        """Remove a Docker volume."""
+        try:
+            self.console.print(f"Removing volume {volume_name}...")
+            volume = self.client.volumes.get(volume_name)
+            volume.remove()
+            return True
+        except NotFound as e:
+            return False
+
+    def remove_all_volumes(self):
+        """Remove all Docker volumes."""
+        try:
+            self.console.display_step("Removing all volumes", "Removing all Docker volumes...")
+            for volume in self.client.volumes.list():
+                self.console.print(f"Removing volume {volume.name}...")
+                volume.remove()
+            return True
+        except NotFound as e:
+            return False
+
+
+
+    def remove_docker_network(self, network_name):
+        """Remove a Docker network."""
+        try:
+            self.console.display_step("Removing Docker Networks", "Removing Docker network...")
+            self.console.print(f"Removing network {network_name}...")
+            network = self.client.networks.get(network_name)
+            network.remove()
+            return True
+        except NotFound as e:
+            return False

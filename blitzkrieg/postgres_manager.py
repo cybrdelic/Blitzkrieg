@@ -27,6 +27,10 @@ class WorkspaceDbManager:
         self.docker_manager.wait_for_container(self.container_name)
         return self.db_port
 
+    def teardown(self):
+        self.console_interface.display_step("PostgreSQL Container Teardown", "Tearing down the PostgreSQL container.")
+        self.docker_manager.remove_container(self.container_name)
+
     def run_postgres_container(self):
         try:
             env_vars = {
