@@ -48,5 +48,5 @@ class WorkspaceManager:
     def setup_workspace(self):
         self.workspace_directory_manager.create_workspace_directory()
         self.workspace_directory_manager.create_projects_directory()
-        self.workspace_directory_manager.create_sqlalchemy_models_directory()
         self.workspace_directory_manager.setup_alembic()
+        self.workspace_directory_manager.create_sqlalchemy_models_directory()

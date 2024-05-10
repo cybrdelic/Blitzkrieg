@@ -71,7 +71,7 @@ class WorkspaceDirectoryManager:
             self.create_dir(sqlalchemy_models_path)
             self.create_workspace_details_table_sqlalchemy_model()
             self.create_project_table_sqlalchemy_model()
-            self.modify_env_dot_py_to_import_models_and_configure_target_metadata()
+            self.update_target_underscore_metadata_and_import_models()
             self.auto_generate_initial_alembic_migration_script()
             return True
         except Exception as e:
@@ -124,27 +124,6 @@ class {model_name}(Base):
             return False
 
     @with_spinner(
-        message="Creating and modifying env.py...",
-        failure_message="Failed to create and modify env.py.",
-        success_message="env.py created and modified successfully."
-    )
-    def modify_env_dot_py_to_import_models_and_configure_target_metadata(self):
-        try:
-            with open(os.path.join(self.workspace_path, 'env.py'), 'w') as f:
-                f.write(f'''
-from sqlalchemy_models import Base
-from sqlalchemy import create_engine
-from alembic import context
-config = context.config
-config.set_main_option('sqlalchemy.url', 'sqlite:///db.sqlite')
-target_metadata = Base.metadata'''
-                        )
-            return True
-        except Exception as e:
-            self.console.display_notice(f"Failed to modify env.py to import models and configure target metadata: {str(e)}")
-            return False
-
-    @with_spinner(
         message="Auto-generating initial Alembic migration script...",
         failure_message="Failed to auto-generate initial Alembic migration script.",
         success_message="Initial Alembic migration script auto-generated successfully."
@@ -152,7 +131,9 @@ target_metadata = Base.metadata'''
     def auto_generate_initial_alembic_migration_script(self):
         try:
             time.sleep(5)
-            run_command('alembic revision --autogenerate -m "Initial"')
+
+            subprocess.run(['alembic', 'revision', '--autogenerate', '-m', 'Initial'], cwd=self.workspace_path, check=True)
+
             return True
         except subprocess.CalledProcessError as e:
             self.console.display_notice(f"Failed to auto-generate initial Alembic migration script: {str(e)}")
@@ -226,9 +207,92 @@ target_metadata = Base.metadata'''
             self.console.display_notice(f"Failed to check if the 'sqlalchemy.url' line exists: {str(e)}")
             return False
 
+    def does_target_underscore_metadata_exist(self):
+        """ Checks if the 'target_metadata' line exists in the Alembic environment file. """
+        try:
+            with open(self.get_alembic_env_path(), 'r') as f:
+                lines = f.readlines()
+            for line in lines:
+                if line.startswith('target_metadata'):
+                    return True
+        except Exception as e:
+            self.console.display_notice(f"Failed to check if the 'target_metadata' line exists: {str(e)}")
+            return False
+
+    def update_target_underscore_metadata_and_import_models(self):
+        """ Updates the 'target_metadata' line in the Alembic environment file. """
+        self.console.display_step('Updating target_metadata', 'Updating the target_metadata line in the Alembic environment file...')
+        self.check_alembic_env_path()
+        self.does_target_underscore_metadata_exist()
+        self.update_env_py_for_alembic()
+
+    def update_env_py_for_alembic(self):
+        """ Update the env.py file for Alembic to include all necessary model imports and set up target_metadata. """
+        env_content = f"""
+from sqlalchemy import create_engine
+from alembic import context
+import os
+import sys
+sys.path.append(os.path.realpath(os.path.dirname(__file__)))
+
+# Dynamically import all models
+from {self.workspace_name}.sqlalchemy_models.Project import Base  # Ensure this imports all models or the declarative base with metadata
+
+# Set the SQLAlchemy database URL
+url = '{self.db_manager.get_sqlalchemy_uri()}'  # Default to SQLite for fallback
+config = context.config
+config.set_main_option('sqlalchemy.url', url)
+
+target_metadata = Base.metadata
+
+def run_migrations_offline():
+    url = config.get_main_option("sqlalchemy.url")
+    context.configure(url=url, target_metadata=target_metadata, literal_binds=True)
+    with context.begin_transaction():
+        context.run_migrations()
+
+def run_migrations_online():
+    url = config.get_main_option("sqlalchemy.url")
+    connectable = create_engine(url)
+    with connectable.connect() as connection:
+        context.configure(connection=connection, target_metadata=target_metadata)
+        with context.begin_transaction():
+            context.run_migrations()
+
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    run_migrations_online()
+    """
+
+        env_path = os.path.join(self.workspace_path, 'migrations', 'env.py')
+        with open(env_path, 'w') as env_file:
+            env_file.write(env_content)
+        self.console.display_notice("env.py updated successfully for Alembic.")
+
+
+
     def get_alembic_ini_path(self):
         """ Gets the path to the Alembic configuration file. """
         return os.path.join(self.workspace_path, 'alembic.ini')
+
+    def get_alembic_env_path(self):
+        """ Gets the path to the Alembic environment file. """
+        return os.path.join(self.workspace_path, 'env.py')
+
+    @with_spinner(
+        message="Getting Alembic env path...",
+        failure_message="Failed to get Alembic env path.",
+        success_message="Alembic env path successfully retrieved."
+    )
+    def check_alembic_env_path(self):
+        try:
+            alembic_env_path = self.get_alembic_env_path()
+            self.console.print(f"Alembic env path: {str(alembic_env_path)} ")
+            return True
+        except Exception as e:
+            self.console.display_notice(f"Failed to get Alembic env path: {str(e)}")
+            return False
 
     @with_spinner(
             message="Getting Alembic ini path...",
