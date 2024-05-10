@@ -1,9 +1,7 @@
 from blitzkrieg.cli.cli_interface import handle_create_project_command, handle_delete_project_command, handle_link_pgadmin_postgres_command, handle_pgadmin_postgres_init_all_command, handle_pgadmin_postgres_init_command, handle_remove_postgres_pgadmin_command, handle_remover_postgres_pgadmin_command
 import click
 import subprocess
-import os
-from blitzkrieg.core.initialization.project_init import initialize_blitzkrieg
-from blitzkrieg.initialization.main import BlitzkriegInitializer
+from blitzkrieg.workspace_manager import WorkspaceManager
 from blitzkrieg.project_management.db.scripts.create_issues import main as create_issues
 from blitzkrieg.project_management.db.scripts.delete_issues import main as delete_issues
 from blitzkrieg.project_management.db.scripts.create_test_issue_in_db import main as create_issue_in_db
@@ -16,31 +14,11 @@ def main():
 @main.command('init')
 @click.argument("workspace_name")
 def init(workspace_name):
-    BlitzkriegInitializer(workspace_name).setup_db_environment()
+    WorkspaceManager(workspace_name).setup_db_environment()
 
 @main.command('setup-db')
 def setup_db():
-    BlitzkriegInitializer().setup_db_schema()
-
-@main.command("pg-all")
-def all():
-    handle_pgadmin_postgres_init_all_command()
-
-@main.command('remover-pg')
-def remover():
-    handle_remover_postgres_pgadmin_command()
-
-@main.command('remove-pg')
-@click.argument('project_name')
-def remove(project_name):
-    handle_remove_postgres_pgadmin_command(project_name)
-
-@main.command('link-pg')
-@click.argument('project_name_1')
-@click.argument('project_name_2')
-@click.argument('parent_name')
-def link(project_name_1, project_name_2, parent_name):
-    handle_link_pgadmin_postgres_command(project_name_1, project_name_2, parent_name)
+    WorkspaceManager().setup_db_schema()
 
 # command to sync db and document systems
 @main.command('sync')
