@@ -11,6 +11,9 @@ class ConsoleInterface:
     def __init__(self):
         self.console = Console()
 
+    def print(self, message):
+        self.console.print(message, style="bold white")
+
     def show_progress(self, total, message, check_function=None):
         """
         Shows a progress bar and optionally checks a condition at each step.
@@ -58,6 +61,8 @@ class ConsoleInterface:
         self.console.print(panel)
 
     def display_step(self, title, description, is_successful=True):
+        # print empty line
+        self.console.print("")
         self.console.print(f"[bold blue]{title}[/bold blue]")
         self.console.print(f"{description}")
 
