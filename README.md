@@ -31,8 +31,10 @@ pip install blitzkrieg
 #### Setting up Blitzkrieg environment
 To initialize Blitzkrieg on your local:
 ```bash
-blitz init
+blitz init <workspace_name>
 ```
+
+This sets up your workspace database and workspace pgadmin instance, as well as your workspace directory - so that Blitzkrieg can manage your projects and databases. The ```workspace_name``` can be an organization name, first and last name, etc.
 
 #### Setting Up a New Project
 To initialize a new CLI project:
