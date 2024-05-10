@@ -18,9 +18,7 @@ from blitzkrieg.file_management.MarkdownManager import MarkdownManager
 from blitzkrieg.issue_management.IssueManager import IssueManager
 from blitzkrieg.project_management.base_project_management.ProjectManager import ProjectManager
 from blitzkrieg.project_management.db.connection import get_db_engine, get_db_session
-from blitzkrieg.project_management.db.services.issues_service import IssueService
-from blitzkrieg.project_management.db.services.project_service import ProjectService
-import time
+
 
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
 
