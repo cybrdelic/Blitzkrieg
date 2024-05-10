@@ -18,11 +18,11 @@ class DockerManager:
     def create_docker_network(self, network_name):
         """Create a Docker network if it doesn't exist."""
         try:
-            self.client.networks.get(network_name)
-            return True
-        except docker.errors.NotFound:
             self.client.networks.create(network_name)
             print(f"Network '{network_name}' created successfully.")
+            return True
+        except Exception as e:
+            print(f"Failed to create network: {str(e)}")
             return False
 
     @with_spinner(
