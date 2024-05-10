@@ -11,12 +11,12 @@ from rich.traceback import install
 from rich.theme import Theme
 from rich.progress import Progress, BarColumn, TextColumn
 from halo import Halo
+from blitzkrieg.database_manager import DatabaseManager
 from blitzkrieg.file_management.DirectoryManager import DirectoryManager
 from blitzkrieg.file_management.FileManager import FileManager
 from blitzkrieg.file_management.MarkdownManager import MarkdownManager
 from blitzkrieg.issue_management.IssueManager import IssueManager
 from blitzkrieg.project_management.base_project_management.ProjectManager import ProjectManager
-from blitzkrieg.project_management.db.DBManager import DatabaseManager
 from blitzkrieg.project_management.db.connection import get_db_engine, get_db_session
 from blitzkrieg.project_management.db.services.issues_service import IssueService
 from blitzkrieg.project_management.db.services.project_service import ProjectService

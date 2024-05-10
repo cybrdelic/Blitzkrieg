@@ -8,7 +8,7 @@ import subprocess
 from blitzkrieg.codebase_scaffolding.dir_management.create_project import create_new_project
 from blitzkrieg.codebase_scaffolding.github.github import create_github_repo, delete_github_repo
 from blitzkrieg.codebase_scaffolding.github.connect_to_github_repo import connect_to_github_repo
-from blitzkrieg.core.networking.port_allocation import find_available_port
+from blitzkrieg.utils.port_allocation import find_available_port
 import shutil
 
 projects = [
