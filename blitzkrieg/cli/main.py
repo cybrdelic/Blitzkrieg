@@ -1,12 +1,8 @@
-from blitzkrieg.cli.cli_interface import handle_create_project_command, handle_delete_project_command, handle_link_pgadmin_postgres_command, handle_pgadmin_postgres_init_all_command, handle_pgadmin_postgres_init_command, handle_remove_postgres_pgadmin_command, handle_remover_postgres_pgadmin_command
+from blitzkrieg.cli.cli_interface import handle_create_project_command, handle_delete_project_command
 import click
 import subprocess
 from blitzkrieg.workspace_manager import WorkspaceManager
-from blitzkrieg.project_management.db.scripts.create_issues import main as create_issues
-from blitzkrieg.project_management.db.scripts.delete_issues import main as delete_issues
-from blitzkrieg.project_management.db.scripts.create_test_issue_in_db import main as create_issue_in_db
 from blitzkrieg.db.class_generation.DBClassGenerator import DBClassGenerator
-from blitzkrieg.project_management.db.scripts import create_issues, delete_issues
 @click.group()
 def main():
     pass
@@ -26,13 +22,13 @@ def setup_db():
 def update(system_to_update):
     """Run the update.sh script."""
     if system_to_update == 'issues':
-        create_issues()
+        pass
 
 @main.command('test')
 @click.argument('test_name')
 def test(test_name):
     if test_name == 'create_issue_in_db':
-        create_issue_in_db()
+        pass
 
 @main.command('delete')
 @click.argument('entity_type')
@@ -40,7 +36,7 @@ def delete(entity_type):
     if entity_type == 'project':
         handle_delete_project_command()
     if entity_type == 'issue':
-        delete_issues()
+        pass
 
 @main.command('setup-test')
 def setup_test():
