@@ -60,5 +60,5 @@ class WorkspaceDbManager:
         }
 
     def get_sqlalchemy_uri(self):
-        db_uri = f'postgresql+psycopg2://{self.db_user}:{self.db_password}@{self.container_name}:{self.db_port}/{self.workspace_name}'
+        db_uri = f'postgresql+psycopg2://{self.db_user}:{self.db_password}@localhost:{self.db_port}/{self.workspace_name}'
         return db_uri
