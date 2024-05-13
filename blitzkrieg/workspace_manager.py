@@ -1,3 +1,4 @@
+from blitzkrieg.alembic_manager import AlembicManager
 from blitzkrieg.docker_manager import DockerManager
 from blitzkrieg.workspace_directory_manager import WorkspaceDirectoryManager
 from blitzkrieg.pgadmin_manager import PgAdminManager
@@ -24,6 +25,7 @@ class WorkspaceManager:
         self.workspace_directory_manager = WorkspaceDirectoryManager(workspace_name=self.workspace_name, db_manager=self.workspace_db_manager)
         self.docker_network_name = f"{self.workspace_name}-network"
         self.cwd = os.getcwd()
+        self.alembic_manager = AlembicManager(db_manager=self.workspace_db_manager, workspace_name=self.workspace_name)
 
     def teardown_workspace(self):
         self.console.display_step('Tearing Down Workspace', 'Tearing down Blitzkrieg workspace...')
@@ -48,5 +50,4 @@ class WorkspaceManager:
     def setup_workspace(self):
         self.workspace_directory_manager.create_workspace_directory()
         self.workspace_directory_manager.create_projects_directory()
-        self.workspace_directory_manager.setup_alembic()
-        self.workspace_directory_manager.create_sqlalchemy_models_directory()
+        self.alembic_manager.setup_alembic()
