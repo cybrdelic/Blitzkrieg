@@ -1,72 +1,95 @@
-from alive_progress import alive_bar
+from loguru import logger
 from halo import Halo
+from datetime import datetime
 from rich.console import Console
 from rich.table import Table
-from rich.theme import Theme
-from rich.panel import Panel
-import time
 from rich.text import Text
+from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
+from rich.logging import RichHandler
+import time
+import traceback
+import re
 
 class ConsoleInterface:
-    def __init__(self):
+    def __init__(self, spinner_type='dots', spinner_color='cyan'):
         self.console = Console()
+        logger.remove()
+        logger.add(RichHandler(console=self.console, markup=True), format="{message}", level="INFO")
+        self.spinner = Halo(spinner=spinner_type, color=spinner_color)
 
-    def print(self, message):
-        self.console.print(message, style="bold white")
+    def display_step(self, title, x=""):
+        self.console.print(Text(f"=== {title} ===\n", style="bold cyan"))
 
-    def show_progress(self, total, message, check_function=None):
-        """
-        Shows a progress bar and optionally checks a condition at each step.
-        Returns True if the condition is met before completion, False otherwise.
-        """
-        with alive_bar(total, title=message, bar="blocks", spinner="dots") as bar:
-            for _ in range(total):
-                time.sleep(1)  # Simulate time passing
-                if check_function and check_function():
-                    self.console.print("[bold green]PostgreSQL is now ready.[/bold green] \n")
-                    return True
-                bar()  # Update the progress bar
-        return False
+    def display_banner(self, text):
+        self.console.print(Text(text, style="bold white on blue"), end="\n\n")
 
-    def show_spinner(self, action, message, success_message="Succeeded", failure_message="Failed", spinner='dots'):
-        with Halo(text=message, spinner=spinner, color='magenta'):
-            try:
-                result = action()  # Execute the passed function
-                if result:
-                    self.console.print(f"[bold green]{success_message}[/bold green]")
-                else:
-                    self.console.print(f"[bold red]{failure_message}[/bold red]")
-                return result
-            except Exception as e:
-                self.console.print(f"[bold red]{failure_message}: {str(e)}[/bold red]")
-                return False
+    def clean_log_message(self, message):
+        # Remove ANSI escape sequences and unnecessary parts
+        message = re.sub(r'\x1b\[[0-9;]*m', '', message)
+        return message.strip()
 
-    def configure_table(self):
-        table = Table(
-            title="Issue Processing Status",
-            show_header=True,
-            header_style="bold magenta",
-            title_style="bold cyan",
-            border_style="bright_green",
-            padding=(0, 1),
-            title_justify="left"
-        )
-        table.add_column("File", style="bold yellow", justify="left", width=40, no_wrap=True)
-        table.add_column("Action", style="bold blue", justify="left", width=25)
-        table.add_column("Status", style="bold green", justify="left", width=35)
-        return table
+    def log(self, message, level="info"):
+        levels = {
+            "info": "INFO",
+            "warning": "WARNING",
+            "error": "ERROR",
+            "success": "SUCCESS"
+        }
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        clean_message = self.clean_log_message(message)
+        log_message = f"[{timestamp}] {clean_message}"
+        logger.log(levels[level], log_message)
 
-    def display_notice(self, message, style="bold yellow"):
-        panel = Panel(message, style=style)
-        self.console.print(panel)
+    def run_tasks(self, tasks, title, task_progress_message_map):
+        self.display_banner(title)
+        task_metrics = {}
 
-    def display_step(self, title, description, is_successful=True):
-        # print empty line
-        self.console.print("")
-        self.console.print(f"[bold blue]{title}[/bold blue]")
-        self.console.print(f"{description}")
+        with Progress(
+            SpinnerColumn(),
+            "[progress.description]{task.description}",
+            BarColumn(bar_width=None),
+            TextColumn("[progress.completed]/[progress.total]"),
+            TimeElapsedColumn(),
+            console=self.console,
+            transient=True,
+        ) as progress:
+            task_id = progress.add_task(title, total=len(tasks))
 
-    def show_status_chip(self, message, success=True):
-        icon = "✔️" if success else "❌"
-        color = "bold green" if success else "bold red"
-        self.console.print(f"[{color}]{icon} {message}[/{color}]")
+            for task in tasks:
+                func, args = task if len(task) > 1 else (task[0], {})
+                task_name = func.__name__
+                task_progress_message = task_progress_message_map.get(task_name, "Executing task")
+
+                self.display_step(task_progress_message)
+                progress.update(task_id, description=task_progress_message, advance=1)
+
+                self.spinner.start(task_progress_message)
+                start_time = time.time()
+
+                try:
+                    task_output = func(**args)
+                    log_level = "success"
+                    self.spinner.succeed("Completed")
+                except Exception as e:
+                    task_output = f"Exception occurred: {str(e)}\n{traceback.format_exc()}"
+                    log_level = "error"
+                    self.spinner.fail("Failed")
+
+                end_time = time.time()
+                elapsed_time = end_time - start_time
+                task_metrics[task_name] = elapsed_time
+
+                self.log(f"{task_output}", level=log_level)
+
+                if log_level == "error":
+                    break
+
+            # Display final task metrics table
+            table = Table(title="Task Metrics", style="bold magenta")
+            table.add_column("Task", justify="left", style="cyan")
+            table.add_column("Execution Time (s)", justify="right", style="magenta")
+
+            for name, exec_time in task_metrics.items():
+                table.add_row(name, f"{exec_time:.2f}")
+
+            self.console.print(table)
