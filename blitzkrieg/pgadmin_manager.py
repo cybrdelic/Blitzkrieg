@@ -1,3 +1,5 @@
+# pgadmin_manager.py
+
 import json
 import os
 import tarfile
@@ -9,16 +11,18 @@ from blitzkrieg.utils.port_allocation import find_available_port
 from blitzkrieg.error_handling.ErrorManager import ErrorManager
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
 from blitzkrieg.ui_management.decorators import with_spinner
-
+import subprocess
 class PgAdminManager:
-    def __init__(self, postgres_port, pgadmin_port=None, workspace_name: str = None):
-        self.docker_manager = DockerManager()
+    def __init__(self, postgres_port, pgadmin_port=None, workspace_name: str = None, console: ConsoleInterface = None):
+        self.docker_manager = DockerManager(
+            console=console if console else ConsoleInterface()
+        )
         self.workspace_name = workspace_name
         self.network_name = f"{self.workspace_name}-network"
         self.container_name = f"{self.workspace_name}-pgadmin"
         self.pgadmin_port = pgadmin_port if pgadmin_port else find_available_port()
         self.postgres_port = postgres_port
-        self.console_interface = ConsoleInterface()
+        self.console_interface = console if console else ConsoleInterface()
         self.error_manager = ErrorManager(self.console_interface)
         self.postgres_server_config_name = f"{self.workspace_name.capitalize()} PostgreSQL"
         self.postgres_server_config_host = f"{self.workspace_name}-postgres"
@@ -26,6 +30,7 @@ class PgAdminManager:
         self.pgadmin_binding_config_path = '/pgadmin4'
         self.pgadmin_login_email = "admin@example.com"
         self.pgadmin_login_password = "admin"
+        self.console = console
 
     def teardown(self):
         self.console_interface.display_step("PgAdmin Container Teardown", "Tearing down the PgAdmin container...")
@@ -33,20 +38,9 @@ class PgAdminManager:
         self.docker_manager.remove_all_volumes()
 
     def setup_pgadmin(self):
-        self.console_interface.display_step("PgAdmin Container Initialization", "Starting the PgAdmin setup process.")
         self.start_pgadmin_container()
-        self.docker_manager.wait_for_container(self.container_name)
-        self.console_interface.display_step("PgAdmin Server Configuration", "Configuring postgres servers in PgAdmin...")
-        self.upload_server_configuration()
+        return self.docker_manager.wait_for_container(self.container_name)
 
-
-        return True
-
-    @with_spinner(
-            message="Starting PgAdmin container...",
-            failure_message="Failed to start PgAdmin container.",
-            success_message="PgAdmin container started successfully."
-    )
     def start_pgadmin_container(self):
         try:
             self.docker_manager.client.containers.run(
@@ -56,20 +50,15 @@ class PgAdminManager:
                 environment={"PGADMIN_DEFAULT_EMAIL": "admin@example.com", "PGADMIN_DEFAULT_PASSWORD": "admin"},
                 volumes={f"{self.network_name}_data": {'bind': self.pgadmin_binding_config_path, 'mode': 'rw'}},
                 network=self.network_name,
-                detach=True
+                detach=True,
+                stdout={subprocess.PIPE},
+                stderr={subprocess.PIPE}
             )
             return True
         except (ContainerError, APIError, NotFound) as e:
-            self.error_manager.display_error(f"Failed to start container: {str(e)}")
+            self.console_interface.log(f"Failed to start container: {str(e)}", level="error")
             return False
 
-
-
-    @with_spinner(
-        message="Uploading server configuration to PgAdmin...",
-        failure_message="Failed to upload server configuration.",
-        success_message="Server configuration uploaded successfully."
-    )
     def upload_server_configuration(self):
         servers_config = {
             "Servers": {
@@ -89,8 +78,9 @@ class PgAdminManager:
             tar_stream = self.create_tar_stream(json.dumps(servers_config), 'servers.json')
             container = self.docker_manager.client.containers.get(self.container_name)
             container.put_archive(os.path.dirname(path), tar_stream)
-            return True
+            return f"Uploaded server configuration to PgAdmin container at [white]{path}[/white]"
         except Exception as e:
+            self.console.log(f"Failed to upload server configuration: {str(e)}", level="error")
             return False
 
     def create_tar_stream(self, content, filename):
