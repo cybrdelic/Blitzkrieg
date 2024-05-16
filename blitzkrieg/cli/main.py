@@ -1,8 +1,11 @@
 from blitzkrieg.cli.cli_interface import handle_create_project_command, handle_delete_project_command
 import click
 import subprocess
+from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
 from blitzkrieg.workspace_manager import WorkspaceManager
 from blitzkrieg.db.class_generation.DBClassGenerator import DBClassGenerator
+
+console_interface = ConsoleInterface()
 @click.group()
 def main():
     pass
@@ -12,9 +15,15 @@ def main():
 @click.argument("is_reverse")
 def init(workspace_name, is_reverse):
     if is_reverse == 'reverse':
-        WorkspaceManager(workspace_name).teardown_workspace()
+        WorkspaceManager(
+            workspace_name=workspace_name,
+            console=console_interface
+        ).teardown_workspace()
     else:
-        WorkspaceManager(workspace_name).create_workspace()
+        WorkspaceManager(
+            workspace_name=workspace_name,
+            console=console_interface
+        ).create_workspace()
 
 
 
