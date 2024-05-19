@@ -48,7 +48,7 @@ class AlembicManager:
             init_file = os.path.join(path, '__init__.py')
             if not os.path.exists(init_file):
                 open(init_file, 'a').close()
-                self.console.log(f"Created __init__.py in {path}")
+        return "Created __init__.py files in all necessary directories."
 
 
     def create_sqlalchemy_models_directory(self):
@@ -69,57 +69,29 @@ class AlembicManager:
             return f"Failed to copy SQLAlchemy models: [bold red]{str(e)}[/bold red]"
 
     def execute_command(self, command, directory, message=None):
-        if message:
-            self.console.log(message)
+        """Execute a shell command in a given directory and handle errors."""
+        # Constructing the command based on whether it's a pip operation
+        if command[0] == 'pip':
+            # Use sys.executable to ensure the correct pip is called
+            full_command = [sys.executable, '-m'] + command
+        else:
+            full_command = command
+
         try:
-            result = subprocess.run(command, cwd=directory, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            self.console.log(f"Command '{command}' executed successfully.")
-            # Optionally, you can log the output if needed
-            # self.console.log(f"Output: {result.stdout}")
-            return True
+            result = subprocess.run(
+                full_command, cwd=directory, shell=False, check=True,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            )
+            if result.stdout:
+                self.console.log(f"Output: {result.stdout}")
+            if result.stderr:
+                self.console.log(f"Error: {result.stderr}", level='error')
+            return self.console.handle_success(f"Command '{' '.join(command)}' executed successfully.")
         except subprocess.CalledProcessError as e:
-            self.console.log(f"Command failed: {e.stderr}", level="error")
-            return False
-
-    def setup_alembic(self):
-        """ Fully sets up Alembic in the workspace. """
-        self.console.run_tasks(
-            tasks=[
-                (self.create_sqlalchemy_models_directory, {}),
-                (self.copy_sqlalchemy_models, {}),
-            ],
-            title="SQLAlchemy Model Generation",
-            task_progress_message_map={
-                'create_sqlalchemy_models_directory': "Creating sqlalchemy_models directory",
-                'copy_sqlalchemy_models': "Copying SQLAlchemy models"
-            }
-        )
-        self.console.run_tasks(
-            tasks=[
-                (self.install_alembic, {}),
-                (self.initialize_alembic, {})
-            ],
-            title="Alembic Installation",
-            task_progress_message_map={
-                'install_alembic': "Installing Alembic",
-                'initialize_alembic': "Initializing Alembic with Alembic Init"
-            }
-
-
-        )
-        self.console.run_tasks(
-            tasks=[
-                (self.create_init_files, {}),
-                (self.update_sqlalchemy_uri, {}),
-                (self.update_alembic_env, {})
-            ],
-            title="Alembic Configuration",
-            task_progress_message_map={
-                'create_init_files': "Creating __init__.py files",
-                'update_sqlalchemy_uri': "Updating SQLAlchemy URI in Alembic configuration",
-                'update_alembic_env': "Updating Alembic env.py file"
-            }
-        )
+            error_detail = f"{e.stderr}" if e.stderr else "No error details available."
+            return self.console.handle_error(f"Command failed with error: {error_detail}")
+        except Exception as e:
+            return self.console.handle_error(f"Unexpected error: {str(e)}")
 
     def create_sqlalchemy_models_directory(self):
         """ Ensure the sqlalchemy_models directory is created and models are initialized. """
