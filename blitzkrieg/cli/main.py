@@ -23,7 +23,7 @@ def init(workspace_name, is_reverse):
         WorkspaceManager(
             workspace_name=workspace_name,
             console=console_interface
-        ).create_workspace()
+        ).blitz_init()
 
 
 

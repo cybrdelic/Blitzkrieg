@@ -90,31 +90,63 @@ class ConsoleInterface:
 
     def display_banner(self, text):
         # Display banner with color parsing
-        colored_text, _ = self.parse_colors(text)
+        colored_text= self.parse_colors(text)
         banner_text = colored(f"\n{colored_text}\n", color="magenta", attrs=['bold'])
         print(banner_text)
 
-
-
     def parse_colors(self, message):
-        # Regex to parse color tags and apply colors dynamically
-        pattern = r'\[(\w+)\](.*?)\[\/\w+\]'
-        matches = re.finditer(pattern, message)
-        is_error = False
+        output = []
+        color_stack = []  # Stack to hold current active colors
+        i = 0
+        last_pos = 0  # Tracks the start of the next plain text segment
 
-        for match in matches:
-            color = match.group(1).lower()
-            text = match.group(2)
-            if color == "red":
-                is_error = True  # Detect errors by red color usage
-            colored_text = colored(text, color)
-            message = message.replace(match.group(0), colored_text)
+        while i < len(message):
+            if message.startswith('[/', i):
+                # Check for a closing tag
+                close_bracket = message.find(']', i)
+                if close_bracket != -1:
+                    # Apply the color to the text up to this tag
+                    if color_stack:
+                        # Only color the text if there is an active color
+                        output.append(colored(message[last_pos:i], color_stack[-1]))
+                    else:
+                        # Append without coloring if the stack is empty
+                        output.append(message[last_pos:i])
+                    # Remove the last color from the stack
+                    color_stack.pop()
+                    # Update last_pos to be after the current tag
+                    last_pos = close_bracket + 1
+                    i = close_bracket
+            elif message.startswith('[', i):
+                # Check for an opening tag
+                close_bracket = message.find(']', i)
+                if close_bracket != -1:
+                    color = message[i+1:close_bracket]
+                    color_stack.append(color)  # Push the new color onto the stack
+                    # Apply the text up to this tag with the current color
+                    if last_pos < i:
+                        if color_stack and len(color_stack) > 1:
+                            # Ensure to apply the previous color, not the current one
+                            output.append(colored(message[last_pos:i], color_stack[-2]))
+                        else:
+                            output.append(message[last_pos:i])
+                    # Update last_pos to be after the current tag
+                    last_pos = close_bracket + 1
+                    i = close_bracket
+            i += 1
 
-        return message, is_error
+        # After exiting the loop, check if there's remaining text to output
+        if last_pos < len(message):
+            if color_stack:
+                output.append(colored(message[last_pos:], color_stack[-1]))
+            else:
+                output.append(message[last_pos:])
+
+        return ''.join(output)
 
     def log(self, message, level="info"):
         # Logging method to use spinner for displaying logs
-        colored_message, is_error = self.parse_colors(message)
+        colored_message = self.parse_colors(message)
         level_icon = {
             "info": "ℹ️", "warning": "⚠️", "error": "❌", "success": "✅"
         }
@@ -132,18 +164,19 @@ class ConsoleInterface:
             for task in task_group['tasks']:
                 self.current_task_key = task['key']
                 key, func_tuple, progress_message, error_message = task.values()
-                colored_progress_message, _ = self.parse_colors(progress_message)
+                colored_progress_message = self.parse_colors(progress_message)
                 self.spinner.start(colored_progress_message)
                 try:
                     func, args = func_tuple
                     task_output = func(**args)
-                    success_message, is_task_error = self.parse_colors(f"{task_output}")
+                    success_message = self.parse_colors(f"{task_output}")
+                    is_task_error = False if success_message.find("ERROR") == -1 else True
                     if is_task_error:
                         self.spinner.fail(success_message)
                     else:
                         self.spinner.succeed(success_message)
                 except Exception as e:
-                    error_message = "run_tasks broken"
+                    error_message = f"run_tasks broken: {e}"
                     self.spinner.fail(error_message)
                     self.log(error_message, level="error")
                     break
