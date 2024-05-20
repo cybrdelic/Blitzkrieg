@@ -18,7 +18,7 @@ class DocumentDatabaseIntegration:
         """
         console = self.console_interface.console
         # Inform the user that issue processing is starting
-        console.print("Starting issue processing...", style="info")
+        console.log("Starting issue processing...", style="info")
 
         # Configure the table for displaying processing status
         table = self.console_interface.configure_table()
@@ -39,5 +39,3 @@ class DocumentDatabaseIntegration:
 
             # Display the processing status
             self.console_interface.display_processing_status(console, table)
-
-        

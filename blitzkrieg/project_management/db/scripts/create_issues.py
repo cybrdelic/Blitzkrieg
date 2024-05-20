@@ -11,16 +11,14 @@ from rich.traceback import install
 from rich.theme import Theme
 from rich.progress import Progress, BarColumn, TextColumn
 from halo import Halo
+from blitzkrieg.database_manager import DatabaseManager
 from blitzkrieg.file_management.DirectoryManager import DirectoryManager
 from blitzkrieg.file_management.FileManager import FileManager
 from blitzkrieg.file_management.MarkdownManager import MarkdownManager
 from blitzkrieg.issue_management.IssueManager import IssueManager
 from blitzkrieg.project_management.base_project_management.ProjectManager import ProjectManager
-from blitzkrieg.project_management.db.DBManager import DatabaseManager
 from blitzkrieg.project_management.db.connection import get_db_engine, get_db_session
-from blitzkrieg.project_management.db.services.issues_service import IssueService
-from blitzkrieg.project_management.db.services.project_service import ProjectService
-import time
+
 
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
 
@@ -49,7 +47,7 @@ def execute_issue_processing_workflow(files, issues_dir, project_name):
     """
     console = console_interface.console
     # Inform the user that issue processing is starting
-    console.print("Starting issue synchronization process...", style="info")
+    console.log("Starting issue synchronization process...", style="info")
 
     # Configure the table for displaying processing status
     table = console_interface.configure_table()
@@ -64,21 +62,21 @@ def execute_issue_processing_workflow(files, issues_dir, project_name):
                 file_path = os.path.join(issues_dir, file)
                 issue_manager.sync_issue_docs_to_db(file_path, project_name, session, table)
             except Exception as e:
-                console.print(f"Error in file {file}: {e}", style="error")
+                console.log(f"Error in file {file}: {e}", style="error")
                 table.add_row(file, "Error", "[red]Failed[/red]")
 
         # Synchronize the issues from database to markdown files
-        console.print("Synchronizing database issues to Markdown...", style="warning")
+        console.log("Synchronizing database issues to Markdown...", style="warning")
         try:
             issue_manager.sync_db_issues_to_docs(issues_dir, project_name, session, table)
         except Exception as e:
             # Handle and display synchronization errors
-            console.print(f"Synchronization error: {e}", style="error")
+            console.log(f"Synchronization error: {e}", style="error")
 
     # Display the final status table with processing results
-    console.print(table)
+    console.log(table)
     # Confirm completion of issue processing
-    console.print("Issue processing completed.", style="success")
+    console.log("Issue processing completed.", style="success")
 
 def main():
     console = console_interface.console
@@ -89,9 +87,9 @@ def main():
             files, issues_dir = markdown_manager.fetch_markdown_files_list(project_root)
         with project_manager.temporary_directory_change(project_root):
             execute_issue_processing_workflow(files, issues_dir, project_name)
-        console.print("[bold green]All issues processed and stored successfully![/bold green]")
+        console.log("[bold green]All issues processed and stored successfully![/bold green]")
     except Exception as e:
-        console.print(f'[bold red]Error:[/bold red] {str(e)}')
+        console.log(f'[bold red]Error:[/bold red] {str(e)}')
 
 if __name__ == "__main__":
     main()

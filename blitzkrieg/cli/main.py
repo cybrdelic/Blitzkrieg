@@ -1,41 +1,49 @@
-from blitzkrieg.cli.cli_interface import handle_create_project_command, handle_delete_project_command, handle_link_pgadmin_postgres_command, handle_pgadmin_postgres_init_all_command, handle_pgadmin_postgres_init_command, handle_remove_postgres_pgadmin_command, handle_remover_postgres_pgadmin_command
+from blitzkrieg.cli.cli_interface import handle_create_project_command, handle_delete_project_command
 import click
 import subprocess
-import os
-from blitzkrieg.core.initialization.project_init import initialize_blitzkrieg
-from blitzkrieg.initialization.main import BlitzkriegInitializer
-from blitzkrieg.project_management.db.scripts.create_issues import main as create_issues
-from blitzkrieg.project_management.db.scripts.delete_issues import main as delete_issues
-from blitzkrieg.project_management.db.scripts.create_test_issue_in_db import main as create_issue_in_db
-
+from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
+from blitzkrieg.workspace_manager import WorkspaceManager
 from blitzkrieg.db.class_generation.DBClassGenerator import DBClassGenerator
+
+console_interface = ConsoleInterface()
 @click.group()
 def main():
     pass
 
 @main.command('init')
-def init():
-    BlitzkriegInitializer().run()
+@click.argument("workspace_name")
+@click.argument("is_reverse")
+def init(workspace_name, is_reverse):
 
-@main.command("pg-all")
-def all():
-    handle_pgadmin_postgres_init_all_command()
+    if is_reverse == 'reverse':
+        email=''
+        password=''
+        WorkspaceManager(
+            workspace_name=workspace_name,
+            console=console_interface,
+            email=email,
+            password=password
+        ).teardown_workspace()
+    else:
+        email = input("Enter your email: ")
+        password = input("Enter your password: ")
+        WorkspaceManager(
+            workspace_name=workspace_name,
+            console=console_interface,
+            email=email,
+            password=password
+        ).blitz_init()
 
-@main.command('remover-pg')
-def remover():
-    handle_remover_postgres_pgadmin_command()
+@main.command("show")
+@click.argument("workspace_name")
+def show(workspace_name):
+    WorkspaceManager(workspace_name=workspace_name, console=console_interface, email="dfsfdsd", password='').show_workspace_details()
 
-@main.command('remove-pg')
-@click.argument('project_name')
-def remove(project_name):
-    handle_remove_postgres_pgadmin_command(project_name)
 
-@main.command('link-pg')
-@click.argument('project_name_1')
-@click.argument('project_name_2')
-@click.argument('parent_name')
-def link(project_name_1, project_name_2, parent_name):
-    handle_link_pgadmin_postgres_command(project_name_1, project_name_2, parent_name)
+
+@main.command('setup-db')
+def setup_db():
+    WorkspaceManager().setup_db_schema()
 
 # command to sync db and document systems
 @main.command('sync')
@@ -43,13 +51,13 @@ def link(project_name_1, project_name_2, parent_name):
 def update(system_to_update):
     """Run the update.sh script."""
     if system_to_update == 'issues':
-        create_issues()
+        pass
 
 @main.command('test')
 @click.argument('test_name')
 def test(test_name):
     if test_name == 'create_issue_in_db':
-        create_issue_in_db()
+        pass
 
 @main.command('delete')
 @click.argument('entity_type')
@@ -57,7 +65,7 @@ def delete(entity_type):
     if entity_type == 'project':
         handle_delete_project_command()
     if entity_type == 'issue':
-        delete_issues()
+        pass
 
 @main.command('setup-test')
 def setup_test():
