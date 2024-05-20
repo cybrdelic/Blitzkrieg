@@ -34,6 +34,11 @@ def init(workspace_name, is_reverse):
             password=password
         ).blitz_init()
 
+@main.command("show")
+@click.argument("workspace_name")
+def show(workspace_name):
+    WorkspaceManager(workspace_name=workspace_name, console=console_interface, email="dfsfdsd", password='').show_workspace_details()
+
 
 
 @main.command('setup-db')

@@ -1,5 +1,6 @@
 # main_blitzkrieg.py
 
+from prettytable import PrettyTable
 from blitzkrieg.alembic_manager import AlembicManager
 from blitzkrieg.docker_manager import DockerManager
 from blitzkrieg.workspace_directory_manager import WorkspaceDirectoryManager
@@ -9,6 +10,7 @@ from blitzkrieg.ui_management.decorators import with_spinner
 from blitzkrieg.utils.port_allocation import find_available_port
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
 import os
+from prettytable import PrettyTable
 
 class WorkspaceManager:
     def __init__(self, workspace_name, console: ConsoleInterface = None, email=None, password=None):
@@ -44,6 +46,7 @@ class WorkspaceManager:
         self.alembic_manager = AlembicManager(db_manager=self.workspace_db_manager, workspace_name=self.workspace_name, console=self.console)
 
     def blitz_init(self):
+
         self.console.add_task(
             key="create_docker_network",
             func_tuple=(self.docker_manager.create_docker_network, {'network_name': self.docker_network_name}),
@@ -84,6 +87,12 @@ class WorkspaceManager:
             error_message="Failed to create workspace directory"
         )
         self.console.add_task(
+            key="store_credentials",
+            func_tuple=(self.store_credentials, {}),
+            progress_message="Storing credentials in .env file",
+            error_message="Failed to store credentials"
+        )
+        self.console.add_task(
             key="create_projects_directory",
             func_tuple=(self.workspace_directory_manager.create_projects_directory, {}),
             progress_message="Creating /projects directory",
@@ -94,6 +103,7 @@ class WorkspaceManager:
             title="Workspace Directory Initialization",
             task_keys=[
                 "create_workspace_directory",
+                "store_credentials",
                 "create_projects_directory"
             ]
         )
@@ -201,3 +211,53 @@ class WorkspaceManager:
             ]
         )
         self.console.run_tasks()
+
+    def store_credentials(self):
+        try:
+            with open(f"{self.workspace_directory_manager.workspace_path}/.env", "w") as f:
+                f.write(f"POSTGRES_USER={self.workspace_db_manager.db_user}\n")
+                f.write(f"POSTGRES_PASSWORD={self.workspace_db_manager.password}\n")
+                f.write(f"POSTGRES_DB={self.workspace_name}\n")
+                f.write(f"POSTGRES_HOST={self.workspace_db_manager.container_name}\n")
+                f.write(f"POSTGRES_PORT={self.workspace_db_manager.db_port}\n")
+                f.write(f"PGADMIN_DEFAULT_EMAIL={self.email}\n")
+                f.write(f"PGADMIN_DEFAULT_PASSWORD={self.password}\n")
+                f.write(f"PGADMIN_PORT={self.pgadmin_port}\n")
+                f.write(f"WORKSPACE_NAME={self.workspace_name}\n")
+                f.write(f"WORKSPACE_DIRECTORY={self.workspace_directory_manager.workspace_path}\n")
+                f.write(f"ALEMBIC_INI_PATH={self.alembic_manager.alembic_ini_path}\n")
+                f.write(f"ALEMBIC_ENV_PATH={self.alembic_manager.alembic_env_path}\n")
+                f.write(f"SQLALCHEMY_MODELS_PATH={self.alembic_manager.sqlalchemy_models_path}\n")
+                f.write(f"SQLALCHEMY_URI={self.workspace_db_manager.get_sqlalchemy_uri()}\n")
+                f.write(f"POSTGRES_SERVER_CONFIG_HOST={self.pgadmin_manager.postgres_server_config_host}\n")
+                f.write(f"POSTGRES_SERVER_CONFIG_USERNAME={self.pgadmin_manager.postgres_server_config_username}\n")
+                f.write(f"PGADMIN_BINDING_CONFIG_PATH={self.pgadmin_manager.pgadmin_binding_config_path}\n")
+            return self.console.handle_success(f"Stored the following credentials in an env file: {self.workspace_directory_manager.workspace_path}/.env")
+        except Exception as e:
+            return self.console.handle_error(f"Failed to store credentials: {str(e)}")
+
+
+
+    def add_color(self, text, color):
+        colors = {
+            "blue": "\033[94m",
+            "green": "\033[92m",
+            "red": "\033[91m",
+            "end": "\033[0m",
+        }
+        return f"{colors[color]}{text}{colors['end']}"
+
+    def show_workspace_details(self):
+        with open(f"{self.workspace_directory_manager.workspace_path}/.env", "r") as f:
+            content = f.readlines()
+
+        table = PrettyTable()
+        table.field_names = [self.add_color("Variable", "blue"), self.add_color("Value", "green")]
+        table.align = "l"  # Align the text to the left
+
+        for line in content:
+            if "=" in line:
+                var, val = line.strip().split('=', 1)
+                table.add_row([var, self.add_color(val, "red")])
+
+        print(table)
