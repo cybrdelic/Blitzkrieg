@@ -64,9 +64,9 @@ class AlembicManager:
                     full_file_path = os.path.join(self.models_directory, filename)
                     if os.path.isfile(full_file_path) and filename.endswith('.py'):
                         shutil.copy(full_file_path, self.sqlalchemy_models_path)
-                return f"Copied SQLAlchemy models from [white]'{self.models_directory}'[/white] to [white]'{self.sqlalchemy_models_path}'[/white]"
+                return self.console.handle_success(f"Copied SQLAlchemy models from [white]{self.models_directory}[/white] to [white]{self.sqlalchemy_models_path}[/white].")
         except Exception as e:
-            return f"Failed to copy SQLAlchemy models: [bold red]{str(e)}[/bold red]"
+            return self.console.handle_error(f"Failed to copy SQLAlchemy models: {str(e)}")
 
     def execute_command(self, command, directory, message=None):
         """Execute a shell command in a given directory and handle errors."""
@@ -99,10 +99,9 @@ class AlembicManager:
             if not os.path.exists(self.sqlalchemy_models_path):
                 os.makedirs(self.sqlalchemy_models_path, exist_ok=True)
                 sys.path.append(self.workspace_path)
-                return f"Created sqlalchemy_models directory at {self.sqlalchemy_models_path}"
+                return self.console.handle_success(f"Created sqlalchemy_models directory at [white]{self.sqlalchemy_models_path}[/white]")
         except Exception as e:
-            return f"Failed to create sqlalchemy_models directory: {str(e)}"
-            # Optionally, also ensure that model files are present or generate them
+            return self.console.handle_error(f"Failed to create sqlalchemy_models directory: {str(e)}")
 
 
     def install_alembic(self):

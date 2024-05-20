@@ -27,7 +27,8 @@ class DockerManager:
             for _ in range(timeout):
                 container = self.client.containers.get(container_name)
                 if container.status == 'running':
-                    success_message = f"Container [white]{container_name}[/white] is running at {container.attrs['NetworkSettings']['IPAddress']} on port {container.attrs['NetworkSettings']['Ports']['5432/tcp'][0]['HostPort']}"
+                    container_attrs = container.attrs
+                    success_message = f"Container [white]{container_name}[/white] is running"
                     return self.console.handle_success(success_message)
                 time.sleep(1)
         except NotFound as e:
@@ -44,10 +45,13 @@ class DockerManager:
             self.console.log(f"Removing container {container_name}...")
             container = self.client.containers.get(container_name)
             container.remove(force=True)
-            return True
+            return self.console.handle_success(f"Container [white]'{container_name}'[/white] removed successfully.")
         except NotFound as e:
-            self.console.log(f"Container {container_name} not found.")
-            return False
+            return self.console.handle_error(f"Container {container_name} not found.")
+        except APIError as e:
+            return self.console.handle_error(f"Failed to remove container [white]{container_name}[/white]: {str(e)}")
+        except Exception as e:
+            return self.console.handle_error(f"Failed to remove container [white]{container_name}[/white]: {str(e)}")
 
     def remove_volume(self, volume_name):
         """Remove a Docker volume."""
@@ -63,23 +67,27 @@ class DockerManager:
     def remove_all_volumes(self):
         """Remove all Docker volumes."""
         try:
-            self.console.display_step("Removing all volumes", "Removing all Docker volumes...")
             for volume in self.client.volumes.list():
-                self.console.log(f"Removing volume {volume.name}...")
                 volume.remove()
-            return True
+            volume_names = [v.name for v in self.client.volumes.list()]
+            csv_volume_names = ', '.join(volume_names)
+            return self.console.handle_success(f"The following volumes have been removed successfully: {csv_volume_names}")
         except NotFound as e:
-            self.console.log("No volumes found.")
-            return False
+            return self.console.handle_error(f"Volume not found.")
+        except APIError as e:
+            return self.console.handle_error(f"Failed to remove volume: {str(e)}")
+        except Exception as e:
+            return self.console.handle_error(f"Failed to remove volume: {str(e)}")
 
     def remove_docker_network(self, network_name):
         """Remove a Docker network."""
         try:
-            self.console.display_step("Removing Docker Networks", "Removing Docker network...")
-            self.console.log(f"Removing network {network_name}...")
             network = self.client.networks.get(network_name)
             network.remove()
-            return True
+            return self.console.handle_success(f"Network [white]{network_name}[/white] removed successfully.")
         except NotFound as e:
-            self.console.log(f"Network {network_name} not found.")
-            return False
+            return self.console.handle_error(f"Network {network_name} not found.")
+        except APIError as e:
+            return self.console.handle_error(f"Failed to remove network [white]{network_name}[/white] due to APIError: {str(e)}")
+        except Exception as e:
+            return self.console.handle_error(f"Failed to remove network [white]{network_name}[/white]: {str(e)}")

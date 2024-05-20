@@ -14,15 +14,24 @@ def main():
 @click.argument("workspace_name")
 @click.argument("is_reverse")
 def init(workspace_name, is_reverse):
+
     if is_reverse == 'reverse':
+        email=''
+        password=''
         WorkspaceManager(
             workspace_name=workspace_name,
-            console=console_interface
+            console=console_interface,
+            email=email,
+            password=password
         ).teardown_workspace()
     else:
+        email = input("Enter your email: ")
+        password = input("Enter your password: ")
         WorkspaceManager(
             workspace_name=workspace_name,
-            console=console_interface
+            console=console_interface,
+            email=email,
+            password=password
         ).blitz_init()
 
 

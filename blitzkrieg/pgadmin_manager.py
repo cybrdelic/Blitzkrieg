@@ -13,7 +13,17 @@ from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
 from blitzkrieg.ui_management.decorators import with_spinner
 import subprocess
 class PgAdminManager:
-    def __init__(self, postgres_port, pgadmin_port=None, workspace_name: str = None, console: ConsoleInterface = None):
+    def __init__(
+            self,
+            postgres_port,
+            pgadmin_port=None,
+            workspace_name: str = None,
+            console: ConsoleInterface = None,
+            email=None,
+            password=None
+    ):
+        self.email = email
+        self.password = password
         self.docker_manager = DockerManager(
             console=console if console else ConsoleInterface()
         )
@@ -28,12 +38,9 @@ class PgAdminManager:
         self.postgres_server_config_host = f"{self.workspace_name}-postgres"
         self.postgres_server_config_username = f"{self.workspace_name}-db-user"
         self.pgadmin_binding_config_path = '/pgadmin4'
-        self.pgadmin_login_email = "admin@example.com"
-        self.pgadmin_login_password = "admin"
         self.console = console
 
     def teardown(self):
-        self.console_interface.display_step("PgAdmin Container Teardown", "Tearing down the PgAdmin container...")
         self.docker_manager.remove_container(self.container_name)
         self.docker_manager.remove_all_volumes()
 
@@ -47,7 +54,7 @@ class PgAdminManager:
                 "dpage/pgadmin4",
                 name=self.container_name,
                 ports={'80/tcp': self.pgadmin_port},
-                environment={"PGADMIN_DEFAULT_EMAIL": "admin@example.com", "PGADMIN_DEFAULT_PASSWORD": "admin"},
+                environment={"PGADMIN_DEFAULT_EMAIL": self.email, "PGADMIN_DEFAULT_PASSWORD": self.password},
                 volumes={f"{self.network_name}_data": {'bind': self.pgadmin_binding_config_path, 'mode': 'rw'}},
                 network=self.network_name,
                 detach=True,
@@ -78,10 +85,9 @@ class PgAdminManager:
             tar_stream = self.create_tar_stream(json.dumps(servers_config), 'servers.json')
             container = self.docker_manager.client.containers.get(self.container_name)
             container.put_archive(os.path.dirname(path), tar_stream)
-            return f"Uploaded server configuration to PgAdmin container at [white]{path}[/white]"
+            return self.console.handle_success(f"Uploaded server configuration to PgAdmin container at [white]{path}[/white]")
         except Exception as e:
-            self.console.log(f"Failed to upload server configuration: {str(e)}", level="error")
-            return False
+            return self.console.handle_error(f"Failed to upload server configuration: {str(e)}")
 
     def create_tar_stream(self, content, filename):
         stream = io.BytesIO()

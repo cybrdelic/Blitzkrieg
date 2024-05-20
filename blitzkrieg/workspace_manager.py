@@ -11,7 +11,9 @@ from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
 import os
 
 class WorkspaceManager:
-    def __init__(self, workspace_name, console: ConsoleInterface = None):
+    def __init__(self, workspace_name, console: ConsoleInterface = None, email=None, password=None):
+        self.email = email
+        self.password = password
         self.workspace_name = workspace_name
         self.console = console if console else ConsoleInterface()
         self.docker_manager = DockerManager(console=self.console)
@@ -21,10 +23,22 @@ class WorkspaceManager:
             postgres_port=self.postgres_port,
             pgadmin_port=self.pgadmin_port,
             workspace_name=self.workspace_name,
-            console=self.console
+            console=self.console,
+            email=email,
+            password=password
         )
-        self.workspace_db_manager = WorkspaceDbManager(port=self.postgres_port, workspace_name=self.workspace_name, console=self.console)
-        self.workspace_directory_manager = WorkspaceDirectoryManager(workspace_name=self.workspace_name, db_manager=self.workspace_db_manager, console_interface=self.console)
+        self.workspace_db_manager = WorkspaceDbManager(
+            port=self.postgres_port,
+            workspace_name=self.workspace_name,
+            console=self.console,
+            email=email,
+            password=password
+        )
+        self.workspace_directory_manager = WorkspaceDirectoryManager(
+            workspace_name=self.workspace_name,
+            db_manager=self.workspace_db_manager,
+            console_interface=self.console
+        )
         self.docker_network_name = f"{self.workspace_name}-network"
         self.cwd = os.getcwd()
         self.alembic_manager = AlembicManager(db_manager=self.workspace_db_manager, workspace_name=self.workspace_name, console=self.console)
@@ -154,9 +168,15 @@ class WorkspaceManager:
         )
         self.console.add_task(
             key="teardown_pgadmin",
-            func_tuple=(self.pgadmin_manager.teardown, {}),
+            func_tuple=(self.docker_manager.remove_container, {"container_name": self.pgadmin_manager.container_name}),
             progress_message="Tearing down PgAdmin container",
             error_message="Failed to tear down PgAdmin container"
+        )
+        self.console.add_task(
+            key="remove_all_volumes",
+            func_tuple=(self.docker_manager.remove_all_volumes, {}),
+            progress_message="Removing all Docker volumes",
+            error_message="Failed to remove all Docker volumes"
         )
         self.console.add_task(
             key="remove_docker_network",
@@ -175,6 +195,7 @@ class WorkspaceManager:
             task_keys=[
                 "teardown",
                 "teardown_pgadmin",
+                "remove_all_volumes",
                 "remove_docker_network",
                 "remove_workspace_directory"
             ]

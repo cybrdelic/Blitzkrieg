@@ -13,16 +13,14 @@ class WorkspaceDirectoryManager:
         self.db_manager = db_manager
 
     def teardown(self):
-        self.console.display_step('Tearing Down Workspace Directory', 'Tearing down workspace directory...')
-        self.delete_workspace_directory()
+        return self.delete_workspace_directory()
 
     def delete_workspace_directory(self):
         try:
             subprocess.run(['rm', '-rf', self.workspace_path], check=True)
-            return True
+            return self.console.handle_success(f"Deleted workspace directory at [white]{self.workspace_path}[/white]")
         except subprocess.CalledProcessError as e:
-            self.console.log(f"Failed to delete workspace directory: {str(e)}")
-            return False
+            return self.console.handle_error(f"Failed to delete workspace directory: {str(e)}")
 
     def create_dir(self, dir_path):
         os.makedirs(dir_path, exist_ok=True)
@@ -30,17 +28,14 @@ class WorkspaceDirectoryManager:
     def create_workspace_directory(self):
         try:
             os.makedirs(self.workspace_path, exist_ok=True)
-            return f"Created workspace directory at {self.workspace_path}"
+            return self.console.handle_success(f"Created workspace directory at [white]{self.workspace_path}[/white]")
         except Exception as e:
-            self.console.log(f"Failed to create workspace directory: {str(e)}")
-            return f"Failed to create workspace directory: {str(e)}"
+            return self.console.handle_error(f"Failed to create workspace directory: {str(e)}")
 
     def create_projects_directory(self):
         try:
             projects_path = os.path.join(self.workspace_path, 'projects')
             self.create_dir(projects_path)
-            self.console.log(f"Created /projects directory inside workspace at {projects_path}")
-            return True
+            return self.console.handle_success(f"Created /projects directory inside workspace at [white]{projects_path}[/white]")
         except Exception as e:
-            self.console.log(f"Failed to create /projects directory inside workspace: {str(e)}", level="error")
-            return False
+            return self.console.handle_error(f"Failed to create /projects directory: {str(e)}")
