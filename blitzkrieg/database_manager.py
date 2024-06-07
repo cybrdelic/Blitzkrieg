@@ -25,11 +25,6 @@ class DatabaseManager:
         session = Session()
         return session
 
-    @with_spinner(
-        message="Creating schema...",
-        failure_message="Failed to create schema.",
-        success_message="Schema created successfully."
-    )
     def create_schema(self, schema_name, engine):
         # creates schema
         with engine.connect() as connection:
