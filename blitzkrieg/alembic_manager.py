@@ -3,59 +3,55 @@
 import os
 import subprocess
 import shutil
+from blitzkrieg.alembic_management.alembic_command_runner import AlembicCommandRunner
 from blitzkrieg.db.models.Base import Base
 from blitzkrieg.db.models.issue import Issue
 from blitzkrieg.db.models.project import Project
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
 import sys
-from blitzkrieg.ui_management.decorators import with_spinner
 
 class AlembicManager:
     def __init__(self, db_manager, workspace_name: str, console: ConsoleInterface = None):
         self.workspace_name = workspace_name
         self.workspace_path = os.path.join(os.getcwd(), self.workspace_name)
         self.db_manager = db_manager
-        self.alembic_env_path = os.path.join(self.workspace_path, 'migrations/env.py')
+        self.alembic_env_path = os.path.join(self.workspace_path, 'alembic/env.py')
         self.alembic_ini_path = os.path.join(self.workspace_path, 'alembic.ini')
-        self.migrations_path = os.path.join(self.workspace_path, 'migrations')
+        self.migrations_path = os.path.join(self.workspace_path, 'alembic')
         self.sqlalchemy_models_path = os.path.join(self.workspace_path, 'sqlalchemy_models')
         self.initial_schema_names = ['project_management', 'event_management', 'workspace_management']
         self.initial_table_models = [Base, Project, Issue]
         self.models_directory = os.path.join(os.getcwd(), 'blitzkrieg', 'db', 'models')
         self.console = console if console else ConsoleInterface()
-        self.initial_schema_names = [
-            'project_management',
-            'event_management',
-            'workspace_management'
-        ]
-        self.initial_table_models = [
-            Base,
-            Project,
-            Issue
-        ]
-        self.base_sql_alchemy_model = Base
-        self.models_directory = os.path.join(os.getcwd(), 'blitzkrieg','db', 'models')
         self.init_paths = [
             self.workspace_path,
             os.path.join(self.workspace_path, 'sqlalchemy_models'),
-            os.path.join(self.workspace_path, 'migrations'),
-            os.path.join(self.workspace_path, 'migrations', 'versions')
+            os.path.join(self.workspace_path, 'alembic'),
+            os.path.join(self.workspace_path, 'alembic', 'versions')
         ]
+        self.command_runner = AlembicCommandRunner(self.console, self.workspace_name)
 
     def create_init_files(self):
         """ Ensures that __init__.py files are present in all necessary directories. """
-        for path in self.init_paths:
-            init_file = os.path.join(path, '__init__.py')
-            if not os.path.exists(init_file):
-                open(init_file, 'a').close()
-        return "Created __init__.py files in all necessary directories."
-
+        try:
+            for path in self.init_paths:
+                init_file = os.path.join(path, '__init__.py')
+                if not os.path.exists(init_file):
+                    open(init_file, 'a').close()
+                    self.console.handle_info(f"Created __init__.py file at {path}")
+            return self.console.handle_success("All __init__.py files created successfully.")
+        except Exception as e:
+            return self.console.handle_error(f"Failed to create init files: {str(e)}")
 
     def create_sqlalchemy_models_directory(self):
-        if not os.path.exists(self.sqlalchemy_models_path):
-            os.makedirs(self.sqlalchemy_models_path, exist_ok=True)
-            self.console.log(f"Created sqlalchemy_models directory at {self.sqlalchemy_models_path}")
-            sys.path.append(self.workspace_path)
+        """ Ensure the sqlalchemy_models directory is created and models are initialized. """
+        try:
+            if not os.path.exists(self.sqlalchemy_models_path):
+                os.makedirs(self.sqlalchemy_models_path, exist_ok=True)
+                sys.path.append(self.workspace_path)
+                return self.console.handle_success(f"Created sqlalchemy_models directory at [white]{self.sqlalchemy_models_path}[/white]")
+        except Exception as e:
+            return self.console.handle_error(f"Failed to create sqlalchemy_models directory: {str(e)}")
 
     def copy_sqlalchemy_models(self):
         try:
@@ -68,48 +64,6 @@ class AlembicManager:
         except Exception as e:
             return self.console.handle_error(f"Failed to copy SQLAlchemy models: {str(e)}")
 
-    def execute_command(self, command, directory, message=None):
-        """Execute a shell command in a given directory and handle errors."""
-        # Constructing the command based on whether it's a pip operation
-        if command[0] == 'pip':
-            # Use sys.executable to ensure the correct pip is called
-            full_command = [sys.executable, '-m'] + command
-        else:
-            full_command = command
-
-        try:
-            result = subprocess.run(
-                full_command, cwd=directory, shell=False, check=True,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-            )
-            if result.stdout:
-                self.console.log(f"Output: {result.stdout}")
-            if result.stderr:
-                self.console.log(f"Error: {result.stderr}", level='error')
-            return self.console.handle_success(f"Command '{' '.join(command)}' executed successfully.")
-        except subprocess.CalledProcessError as e:
-            error_detail = f"{e.stderr}" if e.stderr else "No error details available."
-            return self.console.handle_error(f"Command failed with error: {error_detail}")
-        except Exception as e:
-            return self.console.handle_error(f"Unexpected error: {str(e)}")
-
-    def create_sqlalchemy_models_directory(self):
-        """ Ensure the sqlalchemy_models directory is created and models are initialized. """
-        try:
-            if not os.path.exists(self.sqlalchemy_models_path):
-                os.makedirs(self.sqlalchemy_models_path, exist_ok=True)
-                sys.path.append(self.workspace_path)
-                return self.console.handle_success(f"Created sqlalchemy_models directory at [white]{self.sqlalchemy_models_path}[/white]")
-        except Exception as e:
-            return self.console.handle_error(f"Failed to create sqlalchemy_models directory: {str(e)}")
-
-
-    def install_alembic(self):
-        return self.execute_command(['pip', 'install', 'alembic'], self.workspace_path)
-
-    def initialize_alembic(self):
-        return self.execute_command(['alembic', 'init', 'migrations'], self.workspace_path)
-
     def update_sqlalchemy_uri(self):
         try:
             with open(self.alembic_ini_path, 'r') as f:
@@ -120,11 +74,9 @@ class AlembicManager:
                         f.write(f'sqlalchemy.url = {self.db_manager.get_sqlalchemy_uri()}\n')
                     else:
                         f.write(line)
-            self.console.log(f"SQLAlchemy URI updated successfully in the Alembic configuration. Changed 'sqlalchemy.url' from 'sqlite:///alembic.sqlite' to '{self.db_manager.get_sqlalchemy_uri()}'.")
-            return True
+            return self.console.handle_success(f"SQLAlchemy URI updated successfully in the Alembic configuration. Changed 'sqlalchemy.url' from 'sqlite:///alembic.sqlite' to '{self.db_manager.get_sqlalchemy_uri()}'.")
         except Exception as e:
-            self.console.log(f"Failed to update SQLAlchemy URI: {str(e)}")
-            return False
+            return self.console.handle_error(f"Failed to update SQLAlchemy URI: {str(e)}")
 
     def update_alembic_env(self):
         env_content = self.get_new_env_py_content()
@@ -172,31 +124,25 @@ else:
     def write_env_py_content_to_file(self, content):
         with open(self.alembic_env_path, 'w') as env_file:
             env_file.write(content)
-        self.console.log("Alembic env.py file updated successfully with target metadata and sys.path.append() for SQLAlchemy models.")
+        self.console.handle_info("Alembic env.py file updated successfully with target metadata and sys.path.append() for SQLAlchemy models.")
 
-    def auto_generate_initial_alembic_migration_script(self):
-        return self.execute_command(['alembic', 'revision', '--autogenerate', '-m', 'Initial'], self.workspace_path)
-
-    def run_migrations(self):
-        return self.execute_command(['alembic', 'upgrade', 'head'], self.workspace_path)
-
-    @with_spinner(
-        message="Setting up Alembic for schemas...",
-        failure_message="Failed to set up Alembic for schemas.",
-        success_message="Alembic schemas set up successfully."
-    )
     def setup_alembic_for_schemas(self):
+        self.command_runner.run_migrations()
         for schema in self.initial_schema_names:
             migration_label = f"create_{schema}_schema"
-            self.generate_blank_migration(migration_label)
+            self.command_runner.generate_blank_migration(migration_label)
             self.modify_migration_for_schema(schema, migration_label)
-        self.run_migrations()
+            self.command_runner.run_migrations()
 
-    def generate_blank_migration(self, label):
-        command = ['alembic', 'revision', '--autogenerate', '-m', label]
-        self.execute_command(command, self.workspace_path, f"Generating blank migration for {label}.")
+    def install_alembic(self):
+        self.command_runner.install_alembic()
+
+    def initialize_alembic(self):
+        self.command_runner.initialize_alembic()
 
     def modify_migration_for_schema(self, schema_name, migration_label):
+        self.console.handle_wait(f"Modifying migration file for schema creation: {schema_name}. Migration label: {migration_label}...")
+        self.console.handle_info(f"Modifiying migration file for schema creation: {schema_name}. Migration label: {migration_label}...")
         migration_file = self.find_migration_file(migration_label)
         if migration_file:
             self.insert_schema_creation_sql(migration_file, schema_name)
@@ -205,17 +151,31 @@ else:
         versions_path = os.path.join(self.migrations_path, 'versions')
         for filename in os.listdir(versions_path):
             if label in filename:
-                return os.path.join(versions_path, filename)
+                migration_file_path = os.path.join(versions_path, filename)
+                self.console.handle_info(f"Found migration file: {migration_file_path}")
+                return migration_file_path
         return None
 
     def insert_schema_creation_sql(self, migration_file, schema_name):
-        with open(migration_file, 'r+') as file:
-            content = file.read()
-            position = content.find('def upgrade():')
-            if position != -1:
-                upgrade_section = f"\n    op.execute('CREATE SCHEMA IF NOT EXISTS {schema_name}')\n"
-                content = content[:position + len('def upgrade():')] + upgrade_section + content[position + len('def upgrade():'):]
-                file.seek(0)
-                file.write(content)
-                file.truncate()
-            self.console.log(f"Added schema creation SQL for {schema_name} in {migration_file}.")
+        try:
+            with open(migration_file, 'r+') as file:
+                content = file.read()
+                import re
+                pattern = r'def upgrade\(\) *-> *None:'
+                match = re.search(pattern, content)
+                if match:
+                    position = match.start()
+                    upgrade_section = f"\n    op.execute('CREATE SCHEMA IF NOT EXISTS {schema_name}')\n"
+                    content = content[:position + len(match.group())] + upgrade_section + content[position + len(match.group()):]
+                    file.seek(0)
+                    file.write(content)
+                    file.truncate()
+                    self.console.handle_success(f"Successfully inserted schema creation SQL into migration file: {migration_file}")
+                else:
+                    self.console.handle_error(f"Failed to find 'def upgrade() -> None:' in migration file: {migration_file}. Position: {match}")
+        except FileNotFoundError:
+            self.console.handle_error(f"Migration file not found: {migration_file}")
+        except IOError as e:
+            self.console.handle_error(f"IOError while handling migration file: {migration_file}, Error: {e}")
+        except Exception as e:
+            self.console.handle_error(f"An unexpected error occurred: {e}")
