@@ -3,8 +3,11 @@
 import os
 import subprocess
 import shutil
+from typing import List
 from blitzkrieg.alembic_management.alembic_command_runner import AlembicCommandRunner
-from blitzkrieg.db.models.Base import Base
+from blitzkrieg.alembic_management.model_definitions import ModelDefinitions
+from blitzkrieg.alembic_management.model_manager import ModelDefinition, ModelManager
+from blitzkrieg.db.models.base import Base
 from blitzkrieg.db.models.issue import Issue
 from blitzkrieg.db.models.project import Project
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
@@ -30,6 +33,140 @@ class AlembicManager:
             os.path.join(self.workspace_path, 'alembic', 'versions')
         ]
         self.command_runner = AlembicCommandRunner(self.console, self.workspace_name)
+        self.model_manager = ModelManager(self.console, self.workspace_name)
+        self.model_definitions: List[ModelDefinition] = ModelDefinitions().get_model_definitions()
+    def get_alembic_init_content(self):
+        return f"""
+[alembic]
+# path to migration scripts
+script_location = migrations
+
+# template used to generate migration file names; The default value is %%(rev)s_%%(slug)s
+# Uncomment the line below if you want the files to be prepended with date and time
+# see https://alembic.sqlalchemy.org/en/latest/tutorial.html#editing-the-ini-file
+# for all available tokens
+# file_template = %%(year)d_%%(month).2d_%%(day).2d_%%(hour).2d%%(minute).2d-%%(rev)s_%%(slug)s
+
+# sys.path path, will be prepended to sys.path if present.
+# defaults to the current working directory.
+prepend_sys_path = .
+
+# timezone to use when rendering the date within the migration file
+# as well as the filename.
+# If specified, requires the python>=3.9 or backports.zoneinfo library.
+# Any required deps can installed by adding `alembic[tz]` to the pip requirements
+# string value is passed to ZoneInfo()
+# leave blank for localtime
+# timezone =
+
+# max length of characters to apply to the
+# "slug" field
+# truncate_slug_length = 40
+
+# set to 'true' to run the environment during
+# the 'revision' command, regardless of autogenerate
+# revision_environment = false
+
+# set to 'true' to allow .pyc and .pyo files without
+# a source .py file to be detected as revisions in the
+# versions/ directory
+# sourceless = false
+
+# version location specification; This defaults
+# to migrations/versions.  When using multiple version
+# directories, initial revisions must be specified with --version-path.
+# The path separator used here should be the separator specified by "version_path_separator" below.
+# version_locations = %(here)s/bar:%(here)s/bat:migrations/versions
+
+# version path separator; As mentioned above, this is the character used to split
+# version_locations. The default within new alembic.ini files is "os", which uses os.pathsep.
+# If this key is omitted entirely, it falls back to the legacy behavior of splitting on spaces and/or commas.
+# Valid values for version_path_separator are:
+#
+# version_path_separator = :
+# version_path_separator = ;
+# version_path_separator = space
+version_path_separator = os  # Use os.pathsep. Default configuration used for new projects.
+
+# set to 'true' to search source files recursively
+# in each "version_locations" directory
+# new in Alembic version 1.10
+# recursive_version_locations = false
+
+# the output encoding used when revision files
+# are written from script.py.mako
+# output_encoding = utf-8
+
+sqlalchemy.url = postgresql+psycopg2://alexfigueroa-db-user:0101@localhost:5432/alexfigueroa
+
+
+[post_write_hooks]
+# post_write_hooks defines scripts or Python functions that are run
+# on newly generated revision scripts.  See the documentation for further
+# detail and examples
+
+# format using "black" - use the console_scripts runner, against the "black" entrypoint
+# hooks = black
+# black.type = console_scripts
+# black.entrypoint = black
+# black.options = -l 79 REVISION_SCRIPT_FILENAME
+
+# lint with attempts to fix using "ruff" - use the exec runner, execute a binary
+# hooks = ruff
+# ruff.type = exec
+# ruff.executable = %(here)s/.venv/bin/ruff
+# ruff.options = --fix REVISION_SCRIPT_FILENAME
+
+# Logging configuration
+[loggers]
+keys = root,sqlalchemy,alembic
+
+[handlers]
+keys = console
+
+[formatters]
+keys = generic
+
+[logger_root]
+level = WARN
+handlers = console
+qualname =
+
+[logger_sqlalchemy]
+level = WARN
+handlers =
+qualname = sqlalchemy.engine
+
+[logger_alembic]
+level = INFO
+handlers =
+qualname = alembic
+
+[handler_console]
+class = StreamHandler
+args = (sys.stderr,)
+level = NOTSET
+formatter = generic
+
+[formatter_generic]
+format = %(levelname)-5.5s [%(name)s] %(message)s
+datefmt = %H:%M:%S
+
+"""
+    def create_alembic_ini_file(self):
+        try:
+            self.console.handle_wait("Creating alembic.ini file...")
+            alembic_init_content = self.get_alembic_init_content()
+            with open(self.alembic_ini_path, 'w') as f:
+                f.write(alembic_init_content)
+            self.console.handle_success(f"Created alembic.ini file at [white]{self.alembic_ini_path}[/white]")
+            self.console.display_file_content(self.alembic_ini_path)
+        except Exception as e:
+            return self.console.handle_error(f"Failed to create alembic.ini file: {str(e)}")
+
+    def build_sqlalchemy_model_files(self):
+        for model_definition in self.model_definitions:
+            self.model_manager.create_model(model_definition)
 
     def create_init_files(self):
         """ Ensures that __init__.py files are present in all necessary directories. """
@@ -52,17 +189,6 @@ class AlembicManager:
                 return self.console.handle_success(f"Created sqlalchemy_models directory at [white]{self.sqlalchemy_models_path}[/white]")
         except Exception as e:
             return self.console.handle_error(f"Failed to create sqlalchemy_models directory: {str(e)}")
-
-    def copy_sqlalchemy_models(self):
-        try:
-            if self.models_directory and os.path.exists(self.models_directory):
-                for filename in os.listdir(self.models_directory):
-                    full_file_path = os.path.join(self.models_directory, filename)
-                    if os.path.isfile(full_file_path) and filename.endswith('.py'):
-                        shutil.copy(full_file_path, self.sqlalchemy_models_path)
-                return self.console.handle_success(f"Copied SQLAlchemy models from [white]{self.models_directory}[/white] to [white]{self.sqlalchemy_models_path}[/white].")
-        except Exception as e:
-            return self.console.handle_error(f"Failed to copy SQLAlchemy models: {str(e)}")
 
     def update_sqlalchemy_uri(self):
         try:
@@ -88,27 +214,42 @@ from sqlalchemy import create_engine
 from alembic import context
 import os
 import sys
-sys.path.append(os.path.realpath(os.path.dirname(__file__)))
+import importlib.util
 
-project_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-sys.path.append("{str(self.workspace_path)}")
+sys.path.append(".")
 
-from {self.workspace_name}.sqlalchemy_models.Base import Base
+# Load all models dynamically
+def load_models():
+    models_path = os.path.join('sqlalchemy_models')
+    for filename in os.listdir(models_path):
+        if filename.endswith('.py') and filename != '__init__.py':
+            module_name = filename[:-3]
+            module_spec = importlib.util.spec_from_file_location(module_name, os.path.join(models_path, filename))
+            module = importlib.util.module_from_spec(module_spec)
+            module_spec.loader.exec_module(module)
+
+load_models()
+
+# Import the Base class after loading the models
+from sqlalchemy_models.base import Base
+
+# Reflect the metadata
+metadata = Base.metadata
+for cls in Base.__subclasses__():
+    cls.__table__.metadata = metadata
 
 url = '{self.db_manager.get_sqlalchemy_uri()}'
 config = context.config
 config.set_main_option('sqlalchemy.url', url)
 
-target_metadata = Base.metadata
+target_metadata = metadata
 
 def run_migrations_offline():
-    url = config.get_main_option("sqlalchemy.url")
     context.configure(url=url, target_metadata=target_metadata, literal_binds=True)
     with context.begin_transaction():
         context.run_migrations()
 
 def run_migrations_online():
-    url = config.get_main_option("sqlalchemy.url")
     connectable = create_engine(url)
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)
@@ -121,18 +262,16 @@ else:
     run_migrations_online()
 """
 
+
     def write_env_py_content_to_file(self, content):
         with open(self.alembic_env_path, 'w') as env_file:
             env_file.write(content)
         self.console.handle_info("Alembic env.py file updated successfully with target metadata and sys.path.append() for SQLAlchemy models.")
 
+
     def setup_alembic_for_schemas(self):
-        self.command_runner.run_migrations()
-        for schema in self.initial_schema_names:
-            migration_label = f"create_{schema}_schema"
-            self.command_runner.generate_blank_migration(migration_label)
-            self.modify_migration_for_schema(schema, migration_label)
-            self.command_runner.run_migrations()
+        return
+
 
     def install_alembic(self):
         self.command_runner.install_alembic()
