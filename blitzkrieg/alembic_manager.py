@@ -18,7 +18,7 @@ class AlembicManager:
         self.workspace_name = workspace_name
         self.workspace_path = os.path.join(os.getcwd(), self.workspace_name)
         self.db_manager = db_manager
-        self.alembic_env_path = os.path.join(self.workspace_path, 'alembic/env.py')
+        self.alembic_env_path = os.path.join(self.workspace_path, 'env.py')
         self.alembic_ini_path = os.path.join(self.workspace_path, 'alembic.ini')
         self.migrations_path = os.path.join(self.workspace_path, 'alembic')
         self.sqlalchemy_models_path = os.path.join(self.workspace_path, 'sqlalchemy_models')
@@ -97,7 +97,7 @@ version_path_separator = os  # Use os.pathsep. Default configuration used for ne
 # are written from script.py.mako
 # output_encoding = utf-8
 
-sqlalchemy.url = postgresql+psycopg2://alexfigueroa-db-user:0101@localhost:5432/alexfigueroa
+sqlalchemy.url = postgresql+psycopg2://alexfigueroa-db-user:pw@alexfigueroa-postgres:5432/alexfigueroa
 
 
 [post_write_hooks]
@@ -190,6 +190,18 @@ datefmt = %H:%M:%S
         except Exception as e:
             return self.console.handle_error(f"Failed to create sqlalchemy_models directory: {str(e)}")
 
+    def copy_sqlalchemy_models(self):
+        try:
+            if self.models_directory and os.path.exists(self.models_directory):
+                for filename in os.listdir(self.models_directory):
+                    full_file_path = os.path.join(self.models_directory, filename)
+                    if os.path.isfile(full_file_path) and filename.endswith('.py'):
+                        shutil.copy(full_file_path, self.sqlalchemy_models_path)
+                return self.console.handle_success(f"Copied SQLAlchemy models from [white]{self.models_directory}[/white] to [white]{self.sqlalchemy_models_path}[/white].")
+        except Exception as e:
+            return self.console.handle_error(f"Failed to copy SQLAlchemy models: {str(e)}")
+
+
     def update_sqlalchemy_uri(self):
         try:
             with open(self.alembic_ini_path, 'r') as f:
@@ -207,6 +219,7 @@ datefmt = %H:%M:%S
     def update_alembic_env(self):
         env_content = self.get_new_env_py_content()
         self.write_env_py_content_to_file(env_content)
+        self.console.display_file_content(self.alembic_env_path)
 
     def get_new_env_py_content(self):
         return f"""
@@ -242,7 +255,8 @@ url = '{self.db_manager.get_sqlalchemy_uri()}'
 config = context.config
 config.set_main_option('sqlalchemy.url', url)
 
-target_metadata = metadata
+from sqlalchemy_models.base import Base  # Replace 'myapp.models' with the actual path to your models
+target_metadata = Base.metadata
 
 def run_migrations_offline():
     context.configure(url=url, target_metadata=target_metadata, literal_binds=True)
