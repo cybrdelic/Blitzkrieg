@@ -14,7 +14,7 @@ class DockerManager:
     def create_docker_network(self, network_name):
         """Create a Docker network if it doesn't exist."""
         try:
-            self.console.spinner.text = (f"Creating docker network {network_name} to run workspace containers together")
+            self.console.handle_wait(f"Creating docker network {network_name} to run workspace containers together")
             network = self.client.networks.create(network_name)
             self.console.handle_success(f"Network '{network_name}' created successfully.")
 
@@ -47,7 +47,7 @@ class DockerManager:
         """Wait for container to be in running state."""
         start_time = time.time()
         while time.time() - start_time < timeout:
-            self.console.spinner.text = (f"Waiting for container {container_name} to start...")
+            self.console.handle_wait(f"Waiting for container {container_name} to start...")
             time.sleep(10)
             try:
                 container = self.client.containers.get(container_name)
@@ -56,6 +56,7 @@ class DockerManager:
                     success_message = f"Container [white]{container_name}[/white] is running"
                     self.console.handle_success(success_message)
                     return container_attrs
+                self.console.handle_info(f"Container {container_name} is not running yet. Waiting...")
                 time.sleep(interval)
             except NotFound:
                 self.console.handle_error(f"Container {container_name} not found.")

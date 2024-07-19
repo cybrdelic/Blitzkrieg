@@ -2,7 +2,12 @@
 
 from prettytable import PrettyTable
 from blitzkrieg.alembic_manager import AlembicManager
+from blitzkrieg.docker_management.docker_compose_manager import DockerComposeManager
+from blitzkrieg.docker_management.dockerfile_manager import DockerfileManager
 from blitzkrieg.docker_manager import DockerManager
+from blitzkrieg.file_manager import FileManager
+from blitzkrieg.file_writers.workspace_docker_compose_writer import WorkspaceDockerComposeWriter
+from blitzkrieg.file_writers.workspace_dockerfile_writer import WorkspaceDockerfileWriter
 from blitzkrieg.workspace_directory_manager import WorkspaceDirectoryManager
 from blitzkrieg.pgadmin_manager import PgAdminManager
 from blitzkrieg.postgres_manager import WorkspaceDbManager
@@ -29,6 +34,7 @@ class WorkspaceManager:
             email=email,
             password=password
         )
+        self.file_manager = FileManager()
         self.workspace_db_manager = WorkspaceDbManager(
             port=self.postgres_port,
             workspace_name=self.workspace_name,
@@ -39,178 +45,162 @@ class WorkspaceManager:
         self.workspace_directory_manager = WorkspaceDirectoryManager(
             workspace_name=self.workspace_name,
             db_manager=self.workspace_db_manager,
-            console_interface=self.console
+            console_interface=self.console,
+            docker_manager=self.docker_manager
         )
         self.docker_network_name = f"{self.workspace_name}-network"
         self.cwd = os.getcwd()
-        self.alembic_manager = AlembicManager(db_manager=self.workspace_db_manager, workspace_name=self.workspace_name, console=self.console)
+        self.alembic_manager = AlembicManager(
+            db_manager=self.workspace_db_manager,
+            workspace_name=self.workspace_name,
+            file_manager=self.file_manager,
+            console=self.console
+        )
+        self.dockerfile_manager = DockerfileManager(workspace_name=self.workspace_name, console=self.console)
+        self.docker_compose_manager = DockerComposeManager(console=self.console, workspace_name=self.workspace_name)
+        self.workspace_dockerfile_writer = WorkspaceDockerfileWriter(workspace_path=self.workspace_directory_manager.workspace_path, console=self.console)
+        self.workspace_docker_compose_writer = WorkspaceDockerComposeWriter(workspace_name=self.workspace_name, workspace_path=self.workspace_directory_manager.workspace_path, console=self.console, pgadmin_manager=self.pgadmin_manager)
+        self.file_manager = FileManager()
 
     def blitz_init(self):
+        blitzkrieg_initialization_process = self.console.create_workflow("Blitzkrieg Initialization")
 
-        self.console.add_task(
-            key="create_docker_network",
-            func_tuple=(self.docker_manager.create_docker_network, {'network_name': self.docker_network_name}),
-            progress_message="Creating Docker network",
-            error_message="Failed to create Docker network"
-        )
-        self.console.add_task(
-            key="initialize",
-            func_tuple=(self.workspace_db_manager.initialize, {}),
-            progress_message="Initializing PostgreSQL container",
-            error_message="Failed to initialize PostgreSQL container"
-        )
-        self.console.add_task(
-            key="setup_pgadmin",
-            func_tuple=(self.pgadmin_manager.setup_pgadmin, {}),
-            progress_message="Initializing PgAdmin container",
-            error_message="Failed to initialize PgAdmin container"
-        )
-        self.console.add_task(
-            key="upload_server_configuration",
-            func_tuple=(self.pgadmin_manager.upload_server_configuration, {}),
-            progress_message="Uploading PostgreSQL server configuration to PgAdmin",
-            error_message="Failed to upload PostgreSQL server configuration to PgAdmin"
-        )
-        self.console.add_task_group(
-            title="PgAdmin and Postgres Initialization and Configuration",
-            task_keys=[
-                "create_docker_network",
-                "initialize",
-                "setup_pgadmin",
-                "upload_server_configuration"
-            ]
-        )
-        self.console.add_task(
-            key="create_workspace_directory",
-            func_tuple=(self.workspace_directory_manager.create_workspace_directory, {}),
-            progress_message="Creating workspace directory",
-            error_message="Failed to create workspace directory"
-        )
-        self.console.add_task(
-            key="store_credentials",
-            func_tuple=(self.store_credentials, {}),
-            progress_message="Storing credentials in .env file",
-            error_message="Failed to store credentials"
-        )
-        self.console.add_task(
-            key="create_projects_directory",
-            func_tuple=(self.workspace_directory_manager.create_projects_directory, {}),
-            progress_message="Creating /projects directory",
-            error_message="Failed to create /projects directory"
+        workspace_directory_initalization_group = self.console.create_phase(blitzkrieg_initialization_process, "Workspace Directory Initialization")
+        workspace_docker_files_composition_group = self.console.create_phase(blitzkrieg_initialization_process, "Workspace Docker Files Composition")
+        workspace_container_initialization = self.console.create_phase(blitzkrieg_initialization_process, "Workspace Container Initialization")
 
+        self.console.add_action(
+            phase=workspace_directory_initalization_group,
+            name="Creating workspace docker network",
+            func=self.docker_manager.create_docker_network,
+            network_name=self.docker_network_name
         )
-        self.console.add_task_group(
-            title="Workspace Directory Initialization",
-            task_keys=[
-                "create_workspace_directory",
-                "store_credentials",
-                "create_projects_directory"
-            ]
-        )
-        self.console.add_task(
-            key="create_sqlalchemy_models_directory",
-            func_tuple=(self.alembic_manager.create_sqlalchemy_models_directory, {}),
-            progress_message="Creating /sqlalchemy_models directory",
-            error_message="Failed to create /sqlalchemy_models directory",
-
-        )
-        self.console.add_task(
-            key="copy_sqlalchemy_models",
-            func_tuple=(self.alembic_manager.copy_sqlalchemy_models, {}),
-            progress_message="Copying SQLAlchemy models",
-            error_message="Failed to copy SQLAlchemy models"
+        # Workspace Directory Initialization
+        self.console.add_action(
+            phase=workspace_directory_initalization_group,
+            name="Creating workspace directory...",
+            func=self.workspace_directory_manager.create_workspace_directory
         )
 
-        self.console.add_task_group(
-            title="SQLAlchemy Model Generation",
-            task_keys=[
-                "create_sqlalchemy_models_directory",
-                "copy_sqlalchemy_models"
-            ]
+        self.console.add_action(
+            phase=workspace_directory_initalization_group,
+            name="Storing workspace configuration in .env file...",
+            func=self.store_credentials
         )
-        self.console.add_task(
-            key="install_alembic",
-            func_tuple=(self.alembic_manager.install_alembic, {}),
-            progress_message="Installing Alembic",
-            error_message="Failed to install Alembic"
-        )
-        self.console.add_task(
-            key="initialize_alembic",
-            func_tuple=(self.alembic_manager.initialize_alembic, {}),
-            progress_message="Initializing Alembic with alembic init",
-            error_message="Failed to initialize Alembic"
-        )
-        self.console.add_task_group(
-            title="Alembic Initialization",
-            task_keys=[
-                "install_alembic",
-                "initialize_alembic"
-            ]
-        )
-        self.console.add_task(
-            key="create_init_files",
-            func_tuple=(self.alembic_manager.create_init_files, {}),
-            progress_message="Creating __init__.py files",
-            error_message="Failed to create __init__.py files"
+        self.console.add_action(
+            phase=workspace_directory_initalization_group,
+            func=self.alembic_manager.create_sqlalchemy_models_directory,
+            name="Creating /sqlalchemy_models directory"
         )
 
-        self.console.add_task(
-            key="update_sqlalchemy_uri",
-            func_tuple=(self.alembic_manager.update_sqlalchemy_uri, {}),
-            progress_message="Updating SQLAlchemy URI in alembic.ini",
-            error_message="Failed to update SQLAlchemy URI in alembic.ini"
-        )
-        self.console.add_task(
-            key="update_alembic_env",
-            func_tuple=(self.alembic_manager.update_alembic_env, {}),
-            progress_message="Updating Alembic environment.py",
-            error_message="Failed to update Alembic environment.py"
+        self.console.add_action(
+            phase=workspace_directory_initalization_group,
+            func=self.alembic_manager.copy_sqlalchemy_models,
+            name="Copying SQLAlchemy Models"
         )
 
-        self.console.run_tasks()
+        self.console.add_action(
+            phase=workspace_directory_initalization_group,
+            func=self.alembic_manager.copy_requirements_txt,
+            name="Copying requirements.txt file"
+        )
+
+        self.console.add_action(
+            phase=workspace_directory_initalization_group,
+            func=self.alembic_manager.copy_alembic_init_script,
+            name="Copying Alembic Init Script"
+        )
+
+        self.console.add_action(
+            phase=workspace_directory_initalization_group,
+            name="Creating alembic.ini file to replace later...",
+            func=self.alembic_manager.create_alembic_ini_file
+        )
+
+        self.console.add_action(
+            phase=workspace_directory_initalization_group,
+            name="Creating alembic env file to copy into workspace directory...",
+            func=self.alembic_manager.update_alembic_env
+        )
+        self.console.add_action(
+            phase=workspace_directory_initalization_group,
+            name="Creating __init__.py files in workspace directory",
+            func=self.alembic_manager.create_init_files
+        )
+        self.console.add_action(
+            phase=workspace_directory_initalization_group,
+            name="Creating servers.json file for pgadmin",
+            func=self.pgadmin_manager.create_server_config)
+
+        self.console.add_action(
+            phase=workspace_docker_files_composition_group,
+            name="Creating Dockerfile for workspace...",
+            func=self.workspace_dockerfile_writer.write_dockerfile
+        )
+
+
+        self.console.add_action(
+            phase=workspace_docker_files_composition_group,
+            name="Creating docker-compose.yml for workspace...",
+            func=self.workspace_docker_compose_writer.write_docker_compose_file
+        )
+
+        self.console.add_action(
+            phase=workspace_container_initialization,
+            name="Building workspace container...",
+            func=self.workspace_directory_manager.build_workspace_container
+        )
+
+        self.console.add_action(
+            phase=workspace_container_initialization,
+            name="Starting workspace container...",
+            func=self.workspace_directory_manager.start_workspace_container
+        )
+
+        self.console.run_workflow(blitzkrieg_initialization_process)
 
     def teardown_workspace(self):
-        self.console.add_task(
-            key="teardown",
-            func_tuple=(self.workspace_db_manager.teardown, {}),
-            progress_message="Tearing down PostgreSQL container",
-            error_message="Failed to tear down PostgreSQL container"
+        teardown_workspace_process = self.console.create_workflow("Teardown Workspace")
+        workspace_teardown_group = self.console.create_phase(teardown_workspace_process, "Workspace Teardown")
+        self.console.add_action(
+            phase=workspace_teardown_group,
+            name="Removing Workspace Postgres Database...",
+            func=self.workspace_db_manager.teardown
         )
-        self.console.add_task(
-            key="teardown_pgadmin",
-            func_tuple=(self.docker_manager.remove_container, {"container_name": self.pgadmin_manager.container_name}),
-            progress_message="Tearing down PgAdmin container",
-            error_message="Failed to tear down PgAdmin container"
+        self.console.add_action(
+            phase=workspace_teardown_group,
+            name="Removing Workspace PgAdmin Container...",
+            func=self.docker_manager.remove_container,
+            container_name=self.pgadmin_manager.container_name
         )
-        self.console.add_task(
-            key="remove_all_volumes",
-            func_tuple=(self.docker_manager.remove_all_volumes, {}),
-            progress_message="Removing all Docker volumes",
-            error_message="Failed to remove all Docker volumes"
+
+        self.console.add_action(
+            phase=workspace_teardown_group,
+            name="Removing Workspace Alembic Worker Container...",
+            func=self.docker_manager.remove_container,
+            container_name=f"{self.workspace_name}-alembic-worker"
         )
-        self.console.add_task(
-            key="remove_docker_network",
-            func_tuple=(self.docker_manager.remove_docker_network, {'network_name': self.docker_network_name}),
-            progress_message="Removing Docker network",
-            error_message="Failed to remove Docker network"
+
+        self.console.add_action(
+            phase=workspace_teardown_group,
+            name="Removing All Docker Volumes...",
+            func=self.docker_manager.remove_all_volumes
         )
-        self.console.add_task(
-            key="remove_workspace_directory",
-            func_tuple=(self.workspace_directory_manager.teardown, {}),
-            progress_message="Removing workspace directory",
-            error_message="Failed to remove workspace directory"
+
+        self.console.add_action(
+            phase=workspace_teardown_group,
+            name="Removing Workspace Docker Network...",
+            func=self.docker_manager.remove_docker_network,
+            network_name=self.docker_network_name
         )
-        self.console.add_task_group(
-            title="Workspace Teardown",
-            task_keys=[
-                "teardown",
-                "teardown_pgadmin",
-                "remove_all_volumes",
-                "remove_docker_network",
-                "remove_workspace_directory"
-            ]
+
+        self.console.add_action(
+            phase=workspace_teardown_group,
+            name="Removing Workspace Directory...",
+            func=self.workspace_directory_manager.teardown
         )
-        self.console.run_tasks()
+
+        self.console.run_workflow(teardown_workspace_process)
 
     def store_credentials(self):
         try:

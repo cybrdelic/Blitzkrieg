@@ -1,6 +1,6 @@
 import os
 from blitzkrieg.file_management.DirectoryManager import DirectoryManager
-from blitzkrieg.file_management.FileManager import FileManager
+from blitzkrieg.file_manager import FileManager
 from blitzkrieg.file_management.MarkdownManager import MarkdownManager
 from blitzkrieg.issue_management.IssueManager import IssueManager
 from blitzkrieg.project_management.base_project_management.ProjectManager import ProjectManager

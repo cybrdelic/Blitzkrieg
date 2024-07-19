@@ -27,6 +27,7 @@ class PgAdminManager:
         self.network_name = f"{self.workspace_name}-network"
         self.container_name = f"{self.workspace_name}-pgadmin"
         self.pgadmin_port = pgadmin_port if pgadmin_port else find_available_port()
+        self.pgadmin_port_2 = find_available_port(443)
         self.postgres_port = postgres_port
         self.console_interface = console if console else ConsoleInterface()
         self.error_manager = ErrorManager(self.console_interface)
@@ -35,6 +36,7 @@ class PgAdminManager:
         self.postgres_server_config_username = f"{self.workspace_name}-db-user"
         self.pgadmin_binding_config_path = '/pgadmin4/servers.json'
         self.console = console
+        self.servers_config_path = os.path.join(os.getcwd(), 'servers.json')
 
     def teardown(self):
         self.docker_manager.remove_container(self.container_name)
@@ -45,6 +47,7 @@ class PgAdminManager:
         self.start_pgadmin_container()
 
     def create_server_config(self):
+        self.console.handle_wait("Creating server configuration for PgAdmin...")
         servers_config = {
             "Servers": {
                 "1": {
@@ -58,12 +61,14 @@ class PgAdminManager:
                 }
             }
         }
-        servers_config_path = os.path.join(os.getcwd(), 'servers.json')
+        servers_config_path = os.path.join(os.getcwd(), self.workspace_name, 'servers.json')
         with open(servers_config_path, 'w') as f:
+            self.console.handle_wait(f"Writing server configuration to {servers_config_path}...")
             json.dump(servers_config, f)
         self.console.handle_info(f"Server configuration written to {servers_config_path}")
 
     def start_pgadmin_container(self):
+        self.console.handle_wait("Starting PgAdmin container...")
         servers_config_path = os.path.join(os.getcwd(), 'servers.json')
         volume_bind = {servers_config_path: {'bind': self.pgadmin_binding_config_path, 'mode': 'ro'}}
 

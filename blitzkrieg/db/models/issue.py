@@ -3,7 +3,6 @@
 from sqlalchemy import UUID, Column, Integer, String, ForeignKey, Boolean, DateTime, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from sqlalchemy.ext.declarative import declarative_base
 from blitzkrieg.project_management.db.models.Base import Base
 class Issue(Base):
     __tablename__ = 'issue'
@@ -18,5 +17,6 @@ class Issue(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     project_id = Column(UUID, ForeignKey('project_management.project.id'))
+    content = Column(String)
 
     project = relationship('Project')

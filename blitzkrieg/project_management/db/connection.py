@@ -3,7 +3,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 
 def get_db_engine():
-    engine = create_engine('postgresql+psycopg2://cybrzhyk-db-user:0101@localhost:5432/cybrzhyk')
+    engine = create_engine('postgresql+psycopg2://alexfigueroa-db-user:pw@localhost:5432/alexfigueroa')
     return engine
 
 def get_db_session():

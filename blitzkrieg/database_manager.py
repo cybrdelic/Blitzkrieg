@@ -13,7 +13,7 @@ class DatabaseManager:
         self.db_port = db_port
 
     def get_db_uri(self):
-        db_uri = f'postgresql+psycopg2://{self.db_user}:{self.db_password}@localhost:{self.db_port}/{self.db_name}'
+        db_uri = f'postgresql+psycopg2://{self.db_user}:{self.db_password}@alexfigueroa-postgres:{self.db_port}/{self.db_name}'
         return db_uri
 
     def get_engine(self, db_uri):

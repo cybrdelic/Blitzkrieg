@@ -26,3 +26,10 @@ class AlembicCommandRunner:
 
     def run_migrations(self):
         self.console.execute_command(['alembic', 'upgrade', 'head'], self.workspace_path, "Running migrations...")
+
+    def generate_initial_migrations(self):
+        self.console.execute_command(
+            ['alembic', 'revision', '--autogenerate', '-m', 'initial'],
+            self.workspace_path,
+            "Generating initial migrations..."
+        )
