@@ -29,11 +29,17 @@ class WorkspaceDbManager:
         self.image_name = "postgres:latest"
         self.console_interface = console if console else ConsoleInterface()
         self.docker_manager = DockerManager(console=self.console_interface)
+        self.connection = None
+
+    def set_connection(self):
+        engine = sqlalchemy.create_engine(self.get_sqlalchemy_uri())
+        self.connection = engine.connect()
 
 
     def initialize(self):
         self.run_postgres_container()
         self.check_postgres_password()
+
 
     def test_sqlalchemy_postgres_connection(self):
             # Replace with your actual connection string
