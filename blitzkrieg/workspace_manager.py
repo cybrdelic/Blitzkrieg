@@ -155,6 +155,12 @@ class WorkspaceManager:
             func=self.workspace_directory_manager.start_workspace_container
         )
 
+        self.console.add_action(
+            phase=workspace_container_initialization,
+            name="Saving workspace details to workspace database",
+            func=self.save_workspace_details()
+        )
+
         self.console.run_workflow(blitzkrieg_initialization_process)
 
     def teardown_workspace(self):
@@ -199,6 +205,9 @@ class WorkspaceManager:
         )
 
         self.console.run_workflow(teardown_workspace_process)
+
+    def save_workspace_details(self):
+        self.workspace_db_manager.save_workspace_details()
 
     def store_credentials(self):
         try:
