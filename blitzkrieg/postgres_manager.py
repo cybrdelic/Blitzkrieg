@@ -30,10 +30,23 @@ class WorkspaceDbManager:
         self.console_interface = console if console else ConsoleInterface()
         self.docker_manager = DockerManager(console=self.console_interface)
 
+
     def initialize(self):
         self.run_postgres_container()
         self.check_postgres_password()
-        return self.docker_manager.wait_for_container(self.container_name)
+
+    def test_sqlalchemy_postgres_connection(self):
+            # Replace with your actual connection string
+        engine = sqlalchemy.create_engine('postgresql+psycopg2://alexfigueroa-db-user:pw@localhost:5432/alexfigueroa')
+        try:
+            connection = engine.connect()
+            print("Database connection was successful!")
+            print(connection.execute(sqlalchemy.text("SELECT 1")).scalar())  # Executes a simple query to fetch '1'
+        except Exception as e:
+            print("Error connecting to the database: ", str(e))
+        finally:
+            if connection:
+                connection.close()
 
     def teardown(self):
         return self.docker_manager.remove_container(self.container_name)
@@ -46,25 +59,30 @@ class WorkspaceDbManager:
                 "POSTGRES_PASSWORD": self.password,
                 "POSTGRES_INITDB_ARGS": "--auth-local=md5"
             }
-            env_options = " ".join([f"-e {k}={v}" for k, v in env_vars.items()])
-            command = (
-                f"docker run -d --name {self.container_name} {env_options} "
-                f"--network {self.network_name} -p {self.db_port}:5432 {self.image_name}"
+            self.docker_manager.run_container(
+                container_name=self.container_name,
+                image_name=self.image_name,
+                network_name=self.network_name,
+                env_vars=env_vars,
+                ports={5432: self.db_port},
+                volumes={},
+                detach=True
             )
-            run_command(command)
             return True
         except Exception as e:
-            self.console_interface.log(f"Failed to run PostgreSQL container: {str(e)}")
+            self.console_interface.handle_error(f"Failed to run PostgreSQL container: {str(e)}")
             return False
 
     def check_postgres_password(self):
         try:
+            time.sleep(1.5)
             connection = self.get_connection_details()
+            self.console_interface.spinner.text = (f"Trying to connect to SQLAlchemy engine with password ({self.password}) at {self.get_sqlalchemy_uri()}")
             engine = sqlalchemy.create_engine(self.get_sqlalchemy_uri())
             connection = engine.connect()
             connection.close()
         except Exception as e:
-            self.console_interface.log(f"Failed to connect to PostgreSQL: {str(e)}")
+            self.console_interface.handle_error(f"Failed to connect to PostgreSQL during the verification of Postgres password: {str(e)}")
             return False
 
     def get_connection_details(self):
@@ -77,7 +95,7 @@ class WorkspaceDbManager:
         }
 
     def get_sqlalchemy_uri(self):
-        db_uri = f'postgresql+psycopg2://{self.db_user}:{self.password}@localhost:{self.db_port}/{self.workspace_name}'
+        db_uri = f'postgresql+psycopg2://{self.db_user}:{self.password}@{self.workspace_name}-postgres:{self.db_port}/{self.workspace_name}'
         return db_uri
 
     def setup_schema(self):

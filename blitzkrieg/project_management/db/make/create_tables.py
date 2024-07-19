@@ -38,8 +38,7 @@ def create_tables(session):
 
         logging.info("Creating tables...")
         for table in Base.metadata.tables.values():
-            logging.info(f"Creating table '{table.name}'...")
-        Base.metadata.create_all(session.get_bind())
+            logging.info(f"Creating table '{table.name}'..")
         logging.info("Tables created successfully.")
     except SQLAlchemyError as e:
         logging.error("An error occurred while creating tables: %s", e)

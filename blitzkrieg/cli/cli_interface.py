@@ -1,6 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
 from blitzkrieg.codebase_scaffolding.config.config import load_user_details
-from blitzkrieg.core.initialization.project_init import initialize_blitzkrieg
 import socket
 import json
 import os
@@ -68,25 +67,7 @@ def create_servers_json(project_name_1, project_name_2):
     with open('servers.json', 'w') as f:
         json.dump(servers, f, indent=4)
 
-def handle_pgadmin_postgres_init_command():
-    """Initialize the application."""
-    initialize_blitzkrieg()
 
-def handle_pgadmin_postgres_init_all_command():
-    """Initialize the application."""
-    base_postgres_port = 5432
-    base_pg_admin_port = 5050
-    with ThreadPoolExecutor() as executor:
-        for i, project in enumerate(projects):
-            postgres_port = base_postgres_port + i
-            while is_port_in_use(postgres_port):
-                postgres_port += 1
-
-            pg_admin_port = base_pg_admin_port + i
-            while is_port_in_use(pg_admin_port):
-                pg_admin_port += 1
-
-            executor.submit(initialize_project, project, postgres_port, pg_admin_port)
     # rest of your code
 def handle_remover_postgres_pgadmin_command():
     """Initialize the application."""

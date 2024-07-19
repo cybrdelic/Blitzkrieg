@@ -14,35 +14,67 @@ class DockerManager:
     def create_docker_network(self, network_name):
         """Create a Docker network if it doesn't exist."""
         try:
-            self.client.networks.create(network_name)
-            return self.console.handle_success(f"Network '{network_name}' created successfully.")
+            self.console.handle_wait(f"Creating docker network {network_name} to run workspace containers together")
+            network = self.client.networks.create(network_name)
+            self.console.handle_success(f"Network '{network_name}' created successfully.")
+
+            return network
 
         except Exception as e:
             return self.console.handle_error(f"Failed to create network: {str(e)}")
 
-
-    def wait_for_container(self, container_name, timeout=10000000000):
-        """Wait for container to be in running state."""
+    def run_container(self, container_name, image_name, network_name, env_vars, ports, volumes, detach=True):
+        """Run a Docker container."""
         try:
-            for _ in range(timeout):
+            self.client.containers.run(
+                image_name,
+                name=container_name,
+                network=network_name,
+                environment=env_vars,
+                ports=ports,
+                volumes=volumes,
+                detach=detach
+            )
+            self.wait_for_container(container_name)
+
+        except APIError as e:
+            return self.console.handle_error(f"Failed to run container: {str(e)}")
+        except Exception as e:
+            return self.console.handle_error(f"Failed to run container: {str(e)}")
+
+
+    def wait_for_container(self, container_name, timeout=10000, interval=1):
+        """Wait for container to be in running state."""
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            self.console.handle_wait(f"Waiting for container {container_name} to start...")
+            time.sleep(10)
+            try:
                 container = self.client.containers.get(container_name)
                 if container.status == 'running':
                     container_attrs = container.attrs
                     success_message = f"Container [white]{container_name}[/white] is running"
-                    return self.console.handle_success(success_message)
-                time.sleep(1)
-        except NotFound as e:
-            return self.console.handle_error(f"Container {container_name} not found.")
-        except APIError as e:
-            return self.console.handle_error(f"Failed to get container status: {str(e)}")
-        except Exception as e:
-            message =  f"Failed to wait for container '{container_name}': {str(e)}"
-            return self.console.handle_error(message)
+                    self.console.handle_success(success_message)
+                    return container_attrs
+                self.console.handle_info(f"Container {container_name} is not running yet. Waiting...")
+                time.sleep(interval)
+            except NotFound:
+                self.console.handle_error(f"Container {container_name} not found.")
+                return None
+            except APIError as e:
+                self.console.handle_error(f"Failed to get container status: {str(e)}")
+                return None
+            except Exception as e:
+                message = f"Failed to wait for container '{container_name}': {str(e)}"
+                self.console.handle_error(message)
+                return None
+        self.console.handle_error(f"Timeout exceeded while waiting for container {container_name} to start.")
+        return None
 
     def remove_container(self, container_name):
         """Remove a Docker container."""
         try:
-            self.console.log(f"Removing container {container_name}...")
+            self.console.spinner.text = (f"Removing container {container_name}...")
             container = self.client.containers.get(container_name)
             container.remove(force=True)
             return self.console.handle_success(f"Container [white]'{container_name}'[/white] removed successfully.")
@@ -56,12 +88,12 @@ class DockerManager:
     def remove_volume(self, volume_name):
         """Remove a Docker volume."""
         try:
-            self.console.log(f"Removing volume {volume_name}...")
+            self.console.handle_info(f"Removing volume {volume_name}...")
             volume = self.client.volumes.get(volume_name)
             volume.remove()
             return True
         except NotFound as e:
-            self.console.log(f"Volume {volume_name} not found.")
+            self.console.handle_error(f"Volume {volume_name} not found.")
             return False
 
     def remove_all_volumes(self):

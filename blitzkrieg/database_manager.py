@@ -13,7 +13,7 @@ class DatabaseManager:
         self.db_port = db_port
 
     def get_db_uri(self):
-        db_uri = f'postgresql+psycopg2://{self.db_user}:{self.db_password}@localhost:{self.db_port}/{self.db_name}'
+        db_uri = f'postgresql+psycopg2://{self.db_user}:{self.db_password}@alexfigueroa-postgres:{self.db_port}/{self.db_name}'
         return db_uri
 
     def get_engine(self, db_uri):
@@ -25,11 +25,6 @@ class DatabaseManager:
         session = Session()
         return session
 
-    @with_spinner(
-        message="Creating schema...",
-        failure_message="Failed to create schema.",
-        success_message="Schema created successfully."
-    )
     def create_schema(self, schema_name, engine):
         # creates schema
         with engine.connect() as connection:
