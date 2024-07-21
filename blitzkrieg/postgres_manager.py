@@ -1,6 +1,10 @@
-# workspace_db_manager.py
 
+from blitzkrieg.alembic_manager import AlembicManager
+from blitzkrieg.db.models.base import Base
+from blitzkrieg.db.models.environment_variable import EnvironmentVariable
+from blitzkrieg.db.models.workspace import Workspace
 from blitzkrieg.docker_manager import DockerManager
+from blitzkrieg.pgadmin_manager import PgAdminManager
 from blitzkrieg.utils.port_allocation import find_available_port
 import json
 from blitzkrieg.utils.run_command import run_command
@@ -9,7 +13,13 @@ from docker.errors import NotFound
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
 from blitzkrieg.ui_management.decorators import with_spinner
 import sqlalchemy
+from sqlalchemy.orm import sessionmaker
+import uuid
 
+
+import os
+
+from blitzkrieg.workspace_directory_manager import WorkspaceDirectoryManager
 class WorkspaceDbManager:
     def __init__(
             self,
@@ -17,7 +27,7 @@ class WorkspaceDbManager:
             workspace_name: str = None,
             console: ConsoleInterface = None,
             email=None,
-            password=None
+            password=None,
     ):
         self.password = password
         self.email = email
@@ -29,21 +39,82 @@ class WorkspaceDbManager:
         self.image_name = "postgres:latest"
         self.console_interface = console if console else ConsoleInterface()
         self.docker_manager = DockerManager(console=self.console_interface)
+        self.pgadmin_manager: PgAdminManager = None
+        self.workspace_directory_manager: WorkspaceDirectoryManager = None
+        self.alembic_manager: AlembicManager = None
         self.connection = None
+        self.Session = None
+
+    def set_workspace_directory_manager(self, workspace_directory_manager: WorkspaceDirectoryManager):
+        self.workspace_directory_manager = workspace_directory_manager
+
+    def set_alembic_manager(self, alembic_manager: AlembicManager):
+        self.alembic_manager = alembic_manager
+
+    def set_pgadmin_manager(self, pgadmin_manager: PgAdminManager):
+        self.pgadmin_manager = pgadmin_manager
 
     def set_connection(self):
-        engine = sqlalchemy.create_engine(self.get_sqlalchemy_uri())
+        engine = sqlalchemy.create_engine(f"postgresql+psycopg2://alexfigueroa-db-user:pw@localhost:{self.pgadmin_manager.postgres_port}/alexfigueroa")
         self.connection = engine.connect()
+        Base.metadata.create_all(engine)
+        self.Session = sessionmaker(bind=engine)
 
+    def save_workspace_details(self):
+        if not self.connection:
+            self.set_connection()
+
+        session = self.Session()
+
+        # Generate workspace_id using uuid4
+        workspace_id = uuid.uuid4()
+
+        # Create and save workspace
+        workspace = Workspace(
+            id=workspace_id,
+            name=self.workspace_name,
+            description="",
+            path=os.path.join(os.getcwd(), self.workspace_name)
+        )
+        session.add(workspace)
+        session.commit()
+
+        # Save environment variables
+        env_vars = {
+            "POSTGRES_USER": self.db_user,
+            "POSTGRES_PASSWORD": self.password,
+            "POSTGRES_DB": self.workspace_name,
+            "POSTGRES_HOST": self.container_name,
+            "POSTGRES_PORT": self.db_port,
+            "PGADMIN_DEFAULT_EMAIL": self.email,
+            "PGADMIN_DEFAULT_PASSWORD": self.password,
+            "PGADMIN_PORT": self.pgadmin_manager.pgadmin_port,
+            "WORKSPACE_NAME": self.workspace_name,
+            "WORKSPACE_DIRECTORY": self.workspace_directory_manager.workspace_path,
+            "ALEMBIC_INI_PATH": self.alembic_manager.alembic_ini_path,
+            "ALEMBIC_ENV_PATH": self.alembic_manager.alembic_env_path,
+            "SQLALCHEMY_MODELS_PATH": self.alembic_manager.sqlalchemy_models_path,
+            "SQLALCHEMY_URI": self.get_sqlalchemy_uri(),
+            "POSTGRES_SERVER_CONFIG_HOST": self.pgadmin_manager.postgres_server_config_host,
+            "POSTGRES_SERVER_CONFIG_USERNAME": self.pgadmin_manager.postgres_server_config_username,
+            "PGADMIN_BINDING_CONFIG_PATH": self.pgadmin_manager.pgadmin_binding_config_path
+        }
+
+        for key, value in env_vars.items():
+            env_var_id = uuid.uuid4()
+            env_var = EnvironmentVariable(workspace_id=workspace.id, name=key, value=value, id=env_var_id)
+            session.add(env_var)
+
+        session.commit()
+        session.close()
 
     def initialize(self):
         self.run_postgres_container()
         self.check_postgres_password()
 
-
     def test_sqlalchemy_postgres_connection(self):
-            # Replace with your actual connection string
-        engine = sqlalchemy.create_engine('postgresql+psycopg2://alexfigueroa-db-user:pw@localhost:5432/alexfigueroa')
+        # Replace with your actual connection string
+        engine = sqlalchemy.create_engine(self.get_sqlalchemy_uri())
         try:
             connection = engine.connect()
             print("Database connection was successful!")
@@ -70,7 +141,7 @@ class WorkspaceDbManager:
                 image_name=self.image_name,
                 network_name=self.network_name,
                 env_vars=env_vars,
-                ports={5432: self.db_port},
+                ports={self.db_port: self.db_port},
                 volumes={},
                 detach=True
             )
