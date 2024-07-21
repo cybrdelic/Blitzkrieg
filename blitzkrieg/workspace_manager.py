@@ -158,7 +158,7 @@ class WorkspaceManager:
         self.console.add_action(
             phase=workspace_container_initialization,
             name="Saving workspace details to workspace database",
-            func=self.save_workspace_details()
+            func=self.save_workspace_details
         )
 
         self.console.run_workflow(blitzkrieg_initialization_process)
@@ -166,6 +166,11 @@ class WorkspaceManager:
     def teardown_workspace(self):
         teardown_workspace_process = self.console.create_workflow("Teardown Workspace")
         workspace_teardown_group = self.console.create_phase(teardown_workspace_process, "Workspace Teardown")
+        # self.console.add_action(
+        #     phase=workspace_teardown_group,
+        #     name="Removing workspace details from database",
+        #     func=self.workspace_db_manager.remove_workspace_details
+        # )
         self.console.add_action(
             phase=workspace_teardown_group,
             name="Removing Workspace Postgres Database...",
