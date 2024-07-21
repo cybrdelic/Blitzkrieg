@@ -7,7 +7,7 @@ class EnvironmentVariable(Base):
     __tablename__ = 'environment_variable'
     __table_args__ = {'schema': 'project_management'}
 
-    id = Column(Integer, primary_key=True)
+    id = Column(UUID, primary_key=True)
     name = Column(String)
     value = Column(String)
     workspace_id = Column(UUID, ForeignKey('project_management.workspace.id'))
