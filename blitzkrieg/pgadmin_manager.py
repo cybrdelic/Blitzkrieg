@@ -5,7 +5,6 @@ import os
 import tarfile
 from blitzkrieg.docker_manager import DockerManager
 from blitzkrieg.utils.port_allocation import find_available_port
-from blitzkrieg.error_handling.ErrorManager import ErrorManager
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
 
 class PgAdminManager:
@@ -30,7 +29,6 @@ class PgAdminManager:
         self.pgadmin_port_2 = find_available_port(443)
         self.postgres_port = postgres_port
         self.console_interface = console if console else ConsoleInterface()
-        self.error_manager = ErrorManager(self.console_interface)
         self.postgres_server_config_name = f"{self.workspace_name.capitalize()} PostgreSQL"
         self.postgres_server_config_host = f"{self.workspace_name}-postgres"
         self.postgres_server_config_username = f"{self.workspace_name}-db-user"
