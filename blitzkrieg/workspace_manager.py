@@ -48,6 +48,7 @@ class WorkspaceManager:
             console_interface=self.console,
             docker_manager=self.docker_manager
         )
+        self.workspace_db_manager.set_workspace_directory_manager(self.workspace_directory_manager)
         self.docker_network_name: str = f"{self.workspace_name}-network"
         self.cwd = os.getcwd()
         self.alembic_manager: AlembicManager = AlembicManager(
@@ -56,8 +57,10 @@ class WorkspaceManager:
             file_manager=self.file_manager,
             console=self.console
         )
+        self.workspace_db_manager.set_alembic_manager(self.alembic_manager)
+        self.workspace_db_manager.set_pgadmin_manager(self.pgadmin_manager)
         self.workspace_dockerfile_writer = WorkspaceDockerfileWriter(workspace_path=self.workspace_directory_manager.workspace_path, console=self.console)
-        self.workspace_docker_compose_writer = WorkspaceDockerComposeWriter(workspace_name=self.workspace_name, workspace_path=self.workspace_directory_manager.workspace_path, console=self.console, pgadmin_manager=self.pgadmin_manager)
+        self.workspace_docker_compose_writer = WorkspaceDockerComposeWriter(workspace_name=self.workspace_name, workspace_path=self.workspace_directory_manager.workspace_path, console=self.console, pgadmin_manager=self.pgadmin_manager, postgres_manager=self.workspace_db_manager)
         self.file_manager = FileManager()
 
     def blitz_init(self):
