@@ -10,80 +10,95 @@ console_interface = ConsoleInterface()
 def main():
     pass
 
-@main.command('init')
+@main.command('create-workspace')
 @click.argument("workspace_name")
-@click.argument("is_reverse")
-def init(workspace_name, is_reverse):
+def create_workspace(workspace_name):
 
-    if is_reverse == 'reverse':
-        email=''
-        password=''
-        WorkspaceManager(
-            workspace_name=workspace_name,
-            console=console_interface,
-            email=email,
-            password=password
-        ).teardown_workspace()
-    else:
-        email = input("Enter your email: ")
-        password = input("Enter your password: ")
-        WorkspaceManager(
-            workspace_name=workspace_name,
-            console=console_interface,
-            email=email,
-            password=password
-        ).blitz_init()
+    # read email and password from file in cwd titled blitz.env. if they dont exist prompt user for them, then save them in a file called blitz.env.
+    try:
+        env_file = open('blitz.env', 'r')
+        if env_file:
+            env_vars = env_file.readlines()
+            env_file.close()
+            # find the lines with 'email'
+            email = env_vars[0].split('=')[1].strip()
+            # find the lines with 'password'
+            password = env_vars[1].split('=')[1].strip()
+            if not email:
+                email = input('Enter your email: ')
+                # store email in blitz.env
+                env_vars[0] = f'email={email}\n'
+                # write to file
+                env_file = open('blitz.env', 'w')
+                env_file.writelines(env_vars)
+                env_file.close()
+            if not password:
+                password = input('Enter your password: ')
+                # store password in blitz.env
+                env_vars[1] = f'password={password}\n'
+                # write to file
+                env_file = open('blitz.env', 'w')
+                env_file.writelines(env_vars)
+                env_file.close()
+        else:
+            email = input('Enter your email: ')
+            password = input('Enter your password: ')
+            # store email and password in blitz.env
+            env_file = open('blitz.env', 'w')
+            env_file.write(f'email={email}\n')
+            env_file.write(f'password={password}\n')
+            env_file.close()
+    except FileNotFoundError as e:
+        email = input('Enter your email: ')
+        password = input('Enter your password: ')
+        # store email and password in blitz.env
+        env_file = open('blitz.env', 'w')
+        env_file.write(f'email={email}\n')
+        env_file.write(f'password={password}\n')
+        env_file.close()
 
-@main.command("show")
+
+
+    WorkspaceManager(
+        workspace_name=workspace_name,
+        console=console_interface,
+        email=email,
+        password=password
+    ).blitz_init()
+
+@main.command('delete-workspace')
 @click.argument("workspace_name")
-def show(workspace_name):
-    WorkspaceManager(workspace_name=workspace_name, console=console_interface, email="dfsfdsd", password='').show_workspace_details()
+def delete_workspace(workspace_name):
+    email=''
+    password=''
+    WorkspaceManager(
+        workspace_name=workspace_name,
+        console=console_interface,
+        email=email,
+        password=password
+    ).teardown_workspace()
 
+# @main.command("show")
+# @click.argument("workspace_name")
+# def show(workspace_name):
+#     WorkspaceManager(workspace_name=workspace_name, console=console_interface, email="dfsfdsd", password='').show_workspace_details()
 
-
-@main.command('setup-db')
-def setup_db():
-    WorkspaceManager().setup_db_schema()
-
-# command to sync db and document systems
-@main.command('sync')
-@click.argument('system_to_update')
-def update(system_to_update):
-    """Run the update.sh script."""
-    if system_to_update == 'issues':
-        pass
-
-@main.command('test')
-@click.argument('test_name')
-def test(test_name):
-    if test_name == 'create_issue_in_db':
-        pass
-
-@main.command('delete')
-@click.argument('entity_type')
-def delete(entity_type):
-    if entity_type == 'project':
-        handle_delete_project_command()
-    if entity_type == 'issue':
-        pass
+# @main.command('delete')
+# @click.argument('entity_type')
+# def delete(entity_type):
+#     if entity_type == 'project':
+#         handle_delete_project_command()
+#     if entity_type == 'issue':
+#         pass
 
 @main.command('setup-test')
 def setup_test():
     """Run the setup_test_env.sh script."""
     subprocess.run(['../../bash/setup_test_env.sh'], check=True)
 
-@main.command('create')
-def create_project():
-    handle_create_project_command()
-
-
-@main.command('gen')
-@click.argument('what_to_generate')
-def generate_classes(what_to_generate):
-    """Run the generate_classes.sh script."""
-    if what_to_generate == 'classes':
-        generator = DBClassGenerator(models_dir='blitzkrieg/db/models/', templates_dir='blitzkrieg/db/class_generation/templates/')
-        generator.generate_for_all_models()
+# @main.command('create')
+# def create_project():
+#     handle_create_project_command()
 
 if __name__ == "__main__":
     click.echo("Starting the application...")
