@@ -1,6 +1,8 @@
-from sqlalchemy import UUID, Column, ForeignKey, String
+from sqlalchemy import Column, ForeignKey, String
 from sqlalchemy.orm import relationship
 from blitzkrieg.db.models.base import Base
+
+from sqlalchemy.dialects.postgresql import UUID
 
 
 class Workspace(Base):
