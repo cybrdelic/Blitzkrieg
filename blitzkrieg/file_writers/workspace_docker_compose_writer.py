@@ -32,7 +32,7 @@ class WorkspaceDockerComposeWriter(BaseDockerComposeWriter):
                     'POSTGRES_USER': f"{self.workspace_name}-db-user",
                     'POSTGRES_PASSWORD': 'pw'
                 },
-                'ports': [f"{self.postgres.db_port}: {self.postgres.db_port}"],
+                'ports': [f"{self.postgres.db_port}:{self.postgres.db_port}"],
                 'volumes': ['postgres_data:/var/lib/postgresql/data'],
                 'networks': [self.network_name],
                 'healthcheck': {
