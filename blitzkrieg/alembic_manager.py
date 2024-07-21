@@ -4,7 +4,6 @@ import os
 import subprocess
 import shutil
 from typing import List
-from blitzkrieg.alembic_management.alembic_command_runner import AlembicCommandRunner
 from blitzkrieg.alembic_management.model_definitions import ModelDefinitions
 from blitzkrieg.alembic_management.model_manager import ModelDefinition, ModelManager
 from blitzkrieg.db.models.base import Base
@@ -36,7 +35,6 @@ class AlembicManager:
             os.path.join(self.workspace_path, 'alembic'),
             os.path.join(self.workspace_path, 'alembic', 'versions')
         ]
-        self.command_runner = AlembicCommandRunner(self.console, self.workspace_name)
         self.model_manager = ModelManager(self.console, self.workspace_name)
         self.model_definitions: List[ModelDefinition] = ModelDefinitions().get_model_definitions()
     def get_alembic_init_content(self):
@@ -357,13 +355,6 @@ else:
 
     def setup_alembic_for_schemas(self):
         return
-
-
-    def install_alembic(self):
-        self.command_runner.install_alembic()
-
-    def initialize_alembic(self):
-        self.command_runner.initialize_alembic()
 
     def modify_migration_for_schema(self, schema_name, migration_label):
         self.console.handle_wait(f"Modifying migration file for schema creation: {schema_name}. Migration label: {migration_label}...")
