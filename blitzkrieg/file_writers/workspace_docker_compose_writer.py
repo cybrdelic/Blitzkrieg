@@ -1,9 +1,11 @@
 from blitzkrieg.file_writers.base_docker_compose_writer import BaseDockerComposeWriter
 from blitzkrieg.pgadmin_manager import PgAdminManager
+from blitzkrieg.postgres_manager import WorkspaceDbManager
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
+from blitzkrieg.utils.port_allocation import find_available_port
 
 class WorkspaceDockerComposeWriter(BaseDockerComposeWriter):
-    def __init__(self, workspace_name: str, workspace_path: str, console: ConsoleInterface, pgadmin_manager: PgAdminManager):
+    def __init__(self, workspace_name: str, workspace_path: str, console: ConsoleInterface, pgadmin_manager: PgAdminManager, postgres_manager: WorkspaceDbManager):
         super().__init__(console=console, path=workspace_path)
         self.workspace_name = workspace_name
         self.network_name = f"{self.workspace_name}-network"
@@ -13,6 +15,7 @@ class WorkspaceDockerComposeWriter(BaseDockerComposeWriter):
         }
         self.console = console
         self.pgadmin = pgadmin_manager
+        self.postgres: WorkspaceDbManager = postgres_manager
         self.initialize_services()
 
     def add_service(self, name: str, service_config: dict):
@@ -29,6 +32,7 @@ class WorkspaceDockerComposeWriter(BaseDockerComposeWriter):
                     'POSTGRES_USER': f"{self.workspace_name}-db-user",
                     'POSTGRES_PASSWORD': 'pw'
                 },
+                'ports': [f"{self.postgres.db_port}:{self.postgres.db_port}"],
                 'volumes': ['postgres_data:/var/lib/postgresql/data'],
                 'networks': [self.network_name],
                 'healthcheck': {
@@ -54,7 +58,7 @@ class WorkspaceDockerComposeWriter(BaseDockerComposeWriter):
                 ],
                 'networks': [self.network_name],
                 'ports': [
-                    f"{self.pgadmin.pgadmin_port}:{self.pgadmin.pgadmin_port}",
+                    f"{self.pgadmin.pgadmin_port}:80",
                     f"{self.pgadmin.pgadmin_port_2}:{self.pgadmin.pgadmin_port_2}"]
             }
         )

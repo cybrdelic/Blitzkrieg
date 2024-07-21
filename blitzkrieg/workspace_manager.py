@@ -19,14 +19,14 @@ from prettytable import PrettyTable
 
 class WorkspaceManager:
     def __init__(self, workspace_name, console: ConsoleInterface = None, email=None, password=None):
-        self.email = email
-        self.password = password
-        self.workspace_name = workspace_name
-        self.console = console if console else ConsoleInterface()
-        self.docker_manager = DockerManager(console=self.console)
-        self.postgres_port = find_available_port(5432)
-        self.pgadmin_port = find_available_port(5050)
-        self.pgadmin_manager = PgAdminManager(
+        self.email: str = email
+        self.password: str = password
+        self.workspace_name: str = workspace_name
+        self.console: ConsoleInterface = console if console else ConsoleInterface()
+        self.docker_manager: DockerManager = DockerManager(console=self.console)
+        self.postgres_port: int = find_available_port(5432)
+        self.pgadmin_port: int = find_available_port(5050)
+        self.pgadmin_manager:PgAdminManager = PgAdminManager(
             postgres_port=self.postgres_port,
             pgadmin_port=self.pgadmin_port,
             workspace_name=self.workspace_name,
@@ -34,32 +34,33 @@ class WorkspaceManager:
             email=email,
             password=password
         )
-        self.file_manager = FileManager()
-        self.workspace_db_manager = WorkspaceDbManager(
+        self.file_manager: FileManager = FileManager()
+        self.workspace_db_manager: WorkspaceDbManager = WorkspaceDbManager(
             port=self.postgres_port,
             workspace_name=self.workspace_name,
             console=self.console,
             email=email,
             password=password
         )
-        self.workspace_directory_manager = WorkspaceDirectoryManager(
+        self.workspace_directory_manager: WorkspaceDirectoryManager = WorkspaceDirectoryManager(
             workspace_name=self.workspace_name,
             db_manager=self.workspace_db_manager,
             console_interface=self.console,
             docker_manager=self.docker_manager
         )
-        self.docker_network_name = f"{self.workspace_name}-network"
+        self.workspace_db_manager.set_workspace_directory_manager(self.workspace_directory_manager)
+        self.docker_network_name: str = f"{self.workspace_name}-network"
         self.cwd = os.getcwd()
-        self.alembic_manager = AlembicManager(
+        self.alembic_manager: AlembicManager = AlembicManager(
             db_manager=self.workspace_db_manager,
             workspace_name=self.workspace_name,
             file_manager=self.file_manager,
             console=self.console
         )
-        self.dockerfile_manager = DockerfileManager(workspace_name=self.workspace_name, console=self.console)
-        self.docker_compose_manager = DockerComposeManager(console=self.console, workspace_name=self.workspace_name)
+        self.workspace_db_manager.set_alembic_manager(self.alembic_manager)
+        self.workspace_db_manager.set_pgadmin_manager(self.pgadmin_manager)
         self.workspace_dockerfile_writer = WorkspaceDockerfileWriter(workspace_path=self.workspace_directory_manager.workspace_path, console=self.console)
-        self.workspace_docker_compose_writer = WorkspaceDockerComposeWriter(workspace_name=self.workspace_name, workspace_path=self.workspace_directory_manager.workspace_path, console=self.console, pgadmin_manager=self.pgadmin_manager)
+        self.workspace_docker_compose_writer = WorkspaceDockerComposeWriter(workspace_name=self.workspace_name, workspace_path=self.workspace_directory_manager.workspace_path, console=self.console, pgadmin_manager=self.pgadmin_manager, postgres_manager=self.workspace_db_manager)
         self.file_manager = FileManager()
 
     def blitz_init(self):
@@ -157,11 +158,22 @@ class WorkspaceManager:
             func=self.workspace_directory_manager.start_workspace_container
         )
 
+        self.console.add_action(
+            phase=workspace_container_initialization,
+            name="Saving workspace details to workspace database",
+            func=self.save_workspace_details
+        )
+
         self.console.run_workflow(blitzkrieg_initialization_process)
 
     def teardown_workspace(self):
         teardown_workspace_process = self.console.create_workflow("Teardown Workspace")
         workspace_teardown_group = self.console.create_phase(teardown_workspace_process, "Workspace Teardown")
+        # self.console.add_action(
+        #     phase=workspace_teardown_group,
+        #     name="Removing workspace details from database",
+        #     func=self.workspace_db_manager.remove_workspace_details
+        # )
         self.console.add_action(
             phase=workspace_teardown_group,
             name="Removing Workspace Postgres Database...",
@@ -201,6 +213,9 @@ class WorkspaceManager:
         )
 
         self.console.run_workflow(teardown_workspace_process)
+
+    def save_workspace_details(self):
+        self.workspace_db_manager.save_workspace_details()
 
     def store_credentials(self):
         try:
