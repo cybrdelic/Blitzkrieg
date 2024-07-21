@@ -4,8 +4,6 @@ import os
 import subprocess
 import shutil
 from typing import List
-from blitzkrieg.alembic_management.model_definitions import ModelDefinitions
-from blitzkrieg.alembic_management.model_manager import ModelDefinition, ModelManager
 from blitzkrieg.db.models.base import Base
 from blitzkrieg.db.models.issue import Issue
 from blitzkrieg.db.models.project import Project
@@ -35,8 +33,6 @@ class AlembicManager:
             os.path.join(self.workspace_path, 'alembic'),
             os.path.join(self.workspace_path, 'alembic', 'versions')
         ]
-        self.model_manager = ModelManager(self.console, self.workspace_name)
-        self.model_definitions: List[ModelDefinition] = ModelDefinitions().get_model_definitions()
     def get_alembic_init_content(self):
         return f"""
 [alembic]
@@ -166,9 +162,6 @@ datefmt = %H:%M:%S
         except Exception as e:
             return self.console.handle_error(f"Failed to create alembic.ini file: {str(e)}")
 
-    def build_sqlalchemy_model_files(self):
-        for model_definition in self.model_definitions:
-            self.model_manager.create_model(model_definition)
 
     def create_init_files(self):
         """ Ensures that __init__.py files are present in all necessary directories. """
