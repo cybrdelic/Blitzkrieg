@@ -3,7 +3,6 @@ import click
 import subprocess
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
 from blitzkrieg.workspace_manager import WorkspaceManager
-from blitzkrieg.db.class_generation.DBClassGenerator import DBClassGenerator
 
 console_interface = ConsoleInterface()
 @click.group()
