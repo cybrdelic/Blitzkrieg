@@ -2,8 +2,6 @@
 
 from prettytable import PrettyTable
 from blitzkrieg.alembic_manager import AlembicManager
-from blitzkrieg.docker_management.docker_compose_manager import DockerComposeManager
-from blitzkrieg.docker_management.dockerfile_manager import DockerfileManager
 from blitzkrieg.docker_manager import DockerManager
 from blitzkrieg.file_manager import FileManager
 from blitzkrieg.file_writers.workspace_docker_compose_writer import WorkspaceDockerComposeWriter
