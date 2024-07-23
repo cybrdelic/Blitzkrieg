@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "blitzkrieg"
+version = "0.2.0"
+description = ""
+authors = ["cybrvybe <alexfigueroa.cybr@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+[tool.poetry.scripts]
+blitz = "blitzkrieg.cli.main:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
