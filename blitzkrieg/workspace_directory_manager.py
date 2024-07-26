@@ -30,13 +30,18 @@ class WorkspaceDirectoryManager:
     def create_workspace_directory(self):
         try:
             os.makedirs(self.workspace_path, exist_ok=True)
-            self.blitz_env_manager.create_workspace_env_file()
-            self.blitz_env_manager.add_env_var_to_workspace_file('WORKSPACE_PATH', self.workspace_path)
-            self.blitz_env_manager.add_env_var_to_workspace_file('IS_WORKSPACE_CREATED', True)
-            self.blitz_env_manager.add_env_var_to_workspace_file('WORKSPACE_NAME', self.workspace_name)
             return self.console.handle_success(f"Created workspace directory at [white]{self.workspace_path}[/white]")
         except Exception as e:
             return self.console.handle_error(f"Failed to create workspace directory: {str(e)}")
+
+    def save_workspace_directory_details_to_env_file(self):
+        try:
+            self.blitz_env_manager.add_env_var_to_workspace_file('WORKSPACE_PATH', self.workspace_path)
+            self.blitz_env_manager.add_env_var_to_workspace_file('IS_WORKSPACE', True)
+            self.blitz_env_manager.add_env_var_to_workspace_file('WORKSPACE_NAME', self.workspace_name)
+            return self.console.handle_success(f"Saved workspace directory details to .blitz.env file")
+        except Exception as e:
+            return self.console.handle_error(f"Failed to save workspace directory details to .blitz.env file: {str(e)}")
 
     def create_projects_directory(self):
         try:
