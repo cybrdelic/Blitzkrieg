@@ -8,8 +8,8 @@ class WorkspaceDockerManager:
         self.blitz_env_manager: BlitzEnvManager = blitz_env_manager
         self.docker_manager: DockerManager = DockerManager(blitz_env_manager=blitz_env_manager)
         self.console = console
-        self.workspace_path = self.blitz_env_manager.get_env_var_value('WORKSPACE_PATH')
-        self.workspace_name = self.blitz_env_manager.get_env_var_value('WORKSPACE_NAME')
+        self.workspace_path = self.blitz_env_manager.get_env_var_value_from_workspace_env_file('WORKSPACE_PATH')
+        self.workspace_name = self.blitz_env_manager.get_env_var_value_from_workspace_env_file('WORKSPACE_NAME')
 
     def build_workspace_container(self):
         try:
@@ -25,8 +25,8 @@ class WorkspaceDockerManager:
             self.console.execute_command(command=['docker-compose', 'up', '-d'], directory=self.workspace_path, message="Starting workspace container...")
             self.docker_manager.wait_for_container(container_name=f"{self.workspace_name}-postgres")
             self.docker_manager.wait_for_container(container_name=f"{self.workspace_name}-pgadmin")
-            self.blitz_env_manager.add_env_var_to_file('WORKSPACE_PGADMIN_CONTAINER_NAME', f"{self.workspace_name}-pgadmin")
-            self.blitz_env_manager.add_env_var_to_file('WORKSPACE_PGADMIN_CONTAINER_NAME', f"{self.workspace_name}-pgadmin")
+            self.blitz_env_manager.add_env_var_to_workspace_file('WORKSPACE_PGADMIN_CONTAINER_NAME', f"{self.workspace_name}-pgadmin")
+            self.blitz_env_manager.add_env_var_to_workspace_file('WORKSPACE_PGADMIN_CONTAINER_NAME', f"{self.workspace_name}-pgadmin")
             self.console.handle_success(f"Started all workspace containers")
         except subprocess.CalledProcessError as e:
             return self.console.handle_error(f"Failed to start workspace container: {str(e)}", error_object=e)
