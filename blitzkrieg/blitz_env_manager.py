@@ -25,8 +25,6 @@ class BlitzEnvManager:
                 for line in env_file:
                     if key.upper() in line:
                         return self.__get_env_var_value_from_line(line)
-
-            self.console.handle_error(f"Could not find the environment variable {key} in the .blitz.env file at {path}")
             return None
         except FileNotFoundError:
             self.console.handle_error(f"Could not find the .blitz.env file at {path}. Please create one using the 'create' command")
@@ -49,9 +47,12 @@ class BlitzEnvManager:
 
     def __create_env_file(self, path) -> None:
         try:
-            with open(path, 'w') as env_file:
-                env_file.write("# This file contains environment variables for the Blitzkrieg CLI\n")
-            self.console.handle_info(f"Created a .blitz.env file at {path}")
+            if self.__env_file_exists(path):
+                self.console.handle_info(f"The .blitz.env file already exists at {path}")
+            else:
+                with open(path, 'w') as env_file:
+                    env_file.write("# This file contains environment variables for the Blitzkrieg CLI\n")
+                self.console.handle_info(f"Created a .blitz.env file at {path}")
         except Exception as e:
             self.console.handle_error(f"An error occurred while creating the .blitz.env file: {e}")
 
