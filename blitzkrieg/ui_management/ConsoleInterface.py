@@ -16,6 +16,7 @@ from termcolor import colored
 import shutil
 import pyperclip
 import io
+import os
 
 # Setup structured and colored logging
 logging.basicConfig(
@@ -136,6 +137,10 @@ class FileManager:
         syntax = Syntax(content, lexer, theme='monokai', line_numbers=True)
         self.console.print(syntax)
         self.output_buffer.write(content + "\n")
+
+    def file_exists(self, file_path):
+        return os.path.isfile(file_path)
+
 
 class CommandExecutor:
     def __init__(self, logger: Logger, spinner: CustomSpinner):

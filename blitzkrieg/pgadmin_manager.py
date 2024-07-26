@@ -3,6 +3,7 @@
 import json
 import os
 import tarfile
+from blitzkrieg.blitz_env_manager import BlitzEnvManager
 from blitzkrieg.docker_manager import DockerManager
 from blitzkrieg.utils.port_allocation import find_available_port
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
@@ -11,16 +12,14 @@ class PgAdminManager:
     def __init__(
             self,
             postgres_port,
+            blitz_env_manager: BlitzEnvManager,
             pgadmin_port=None,
             workspace_name: str = None,
             console: ConsoleInterface = None,
-            email=None,
-            password=None
     ):
-        self.email = email
-        self.password = password
+        self.blitz_env_manager: BlitzEnvManager = blitz_env_manager
         self.docker_manager = DockerManager(
-            console=console if console else ConsoleInterface()
+            blitz_env_manager=blitz_env_manager
         )
         self.workspace_name = workspace_name
         self.network_name = f"{self.workspace_name}-network"
@@ -74,7 +73,7 @@ class PgAdminManager:
             self.container_name,
             "dpage/pgadmin4",
             self.network_name,
-            {"PGADMIN_DEFAULT_EMAIL": self.email, "PGADMIN_DEFAULT_PASSWORD": self.password},
+            {"PGADMIN_DEFAULT_EMAIL": self.blitz_env_manager.ensure_workspace_env_var('EMAIL', 'Enter your email: '), "PGADMIN_DEFAULT_PASSWORD": self.blitz_env_manager.ensure_workspace_env_var('PASSWORD', 'Enter your password: ')},
             {'80/tcp': self.pgadmin_port},
             volume_bind
         )

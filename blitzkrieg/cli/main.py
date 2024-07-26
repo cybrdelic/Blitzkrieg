@@ -3,32 +3,32 @@ from blitzkrieg.cli.cli_interface import handle_create_project_command, handle_d
 import click
 from packaging import version as packaging_version
 import subprocess
-from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
+from blitzkrieg.ui_management.console_instance import console
+from blitzkrieg.workspace_directory_manager import WorkspaceDirectoryManager
 from blitzkrieg.workspace_manager import WorkspaceManager
 import os
 
-console_interface = ConsoleInterface()
 @click.group()
 def main():
     pass
 @main.command('create-workspace')
 @click.argument("workspace_name")
 def create_workspace(workspace_name):
-    console_interface = ConsoleInterface()
+
+    blitz_env_manager = BlitzEnvManager(workspace_name=workspace_name)
 
     WorkspaceManager(
         workspace_name=workspace_name,
-        console=console_interface
+        blitz_env_manager=blitz_env_manager,
     ).blitz_init()
 
 @main.command('delete-workspace')
 @click.argument("workspace_name")
 def delete_workspace(workspace_name):
-    email=''
-    password=''
+    blitz_env_manager = BlitzEnvManager(workspace_name=workspace_name)
     WorkspaceManager(
         workspace_name=workspace_name,
-        console=console_interface
+        blitz_env_manager=blitz_env_manager
     ).teardown_workspace()
 
 # @main.command("show")
