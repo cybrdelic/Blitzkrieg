@@ -8,8 +8,8 @@ class WorkspaceDockerManager:
         self.blitz_env_manager: BlitzEnvManager = blitz_env_manager
         self.docker_manager: DockerManager = DockerManager(blitz_env_manager=blitz_env_manager)
         self.console = console
-        self.workspace_path = self.blitz_env_manager.get_env_var('WORKSPACE_PATH')
-        self.workspace_name = self.blitz_env_manager.get_env_var('WORKSPACE_NAME')
+        self.workspace_path = self.blitz_env_manager.get_env_var_value('WORKSPACE_PATH')
+        self.workspace_name = self.blitz_env_manager.get_env_var_value('WORKSPACE_NAME')
 
     def build_workspace_container(self):
         try:
