@@ -97,7 +97,6 @@ class WorkspaceManager:
             network_name=self.docker_network_name
         )
 
-
         self.console.add_action(
             phase=workspace_directory_initalization_group,
             name="Storing workspace configuration in .env file...",
@@ -234,24 +233,27 @@ class WorkspaceManager:
 
     def store_credentials(self):
         try:
-            with open(f"{self.workspace_directory_manager.workspace_path}/.env", "w") as f:
-                f.write(f"POSTGRES_USER={self.workspace_db_manager.db_user}\n")
-                f.write(f"POSTGRES_DB={self.workspace_name}\n")
-                f.write(f"POSTGRES_HOST={self.workspace_db_manager.container_name}\n")
-                f.write(f"POSTGRES_PORT={self.workspace_db_manager.db_port}\n")
-                f.write(f"PGADMIN_PORT={self.pgadmin_port}\n")
-                f.write(f"WORKSPACE_NAME={self.workspace_name}\n")
-                f.write(f"WORKSPACE_DIRECTORY={self.workspace_directory_manager.workspace_path}\n")
-                f.write(f"ALEMBIC_INI_PATH={self.alembic_manager.alembic_ini_path}\n")
-                f.write(f"ALEMBIC_ENV_PATH={self.alembic_manager.alembic_env_path}\n")
-                f.write(f"SQLALCHEMY_MODELS_PATH={self.alembic_manager.sqlalchemy_models_path}\n")
-                f.write(f"SQLALCHEMY_URI={self.workspace_db_manager.get_sqlalchemy_uri()}\n")
-                f.write(f"POSTGRES_SERVER_CONFIG_HOST={self.pgadmin_manager.postgres_server_config_host}\n")
-                f.write(f"POSTGRES_SERVER_CONFIG_USERNAME={self.pgadmin_manager.postgres_server_config_username}\n")
-                f.write(f"PGADMIN_BINDING_CONFIG_PATH={self.pgadmin_manager.pgadmin_binding_config_path}\n")
-            return self.console.handle_success(f"Stored the following credentials in an env file: {self.workspace_directory_manager.workspace_path}/.env")
+            workspace_env_vars = [
+                ("POSTGRES_USER", self.workspace_db_manager.db_user),
+                ("POSTGRES_DB", self.workspace_name),
+                ("POSTGRES_HOST", self.workspace_db_manager.container_name),
+                ("POSTGRES_PORT", self.workspace_db_manager.db_port),
+                ("PGADMIN_PORT", self.pgadmin_port),
+                ("WORKSPACE_NAME", self.workspace_name),
+                ("WORKSPACE_DIRECTORY", self.workspace_directory_manager.workspace_path),
+                ("ALEMBIC_INI_PATH", self.alembic_manager.alembic_ini_path),
+                ("ALEMBIC_ENV_PATH", self.alembic_manager.alembic_env_path),
+                ("SQLALCHEMY_MODELS_PATH", self.alembic_manager.sqlalchemy_models_path),
+                ("SQLALCHEMY_URI", self.workspace_db_manager.get_sqlalchemy_uri()),
+                ("POSTGRES_SERVER_CONFIG_HOST", self.pgadmin_manager.postgres_server_config_host),
+                ("POSTGRES_SERVER_CONFIG_USERNAME", self.pgadmin_manager.postgres_server_config_username),
+                ("PGADMIN_BINDING_CONFIG_PATH", self.pgadmin_manager.pgadmin_binding_config_path)
+            ]
+
+            for var, val in workspace_env_vars:
+                self.blitz_env_manager.add_env_var_to_workspace_file(var, val)
         except Exception as e:
-            return self.console.handle_error(f"Failed to store credentials: {str(e)}")
+            self.console.handle_error(f"An error occurred while storing workspace credentials: {e}")
 
 
 
