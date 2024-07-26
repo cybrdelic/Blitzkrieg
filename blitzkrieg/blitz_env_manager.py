@@ -38,7 +38,7 @@ class BlitzEnvManager:
             with open(path, 'a') as env_file:
                 line_value = self.__get_env_var_line_value(key, value)
                 env_file.write(line_value)
-                self.console.handle_info(f"Added the environment variable: {line_value} at the following path: {path}")
+                self.console.handle_info(f"Added the environment variable: {line_value}")
         except Exception as e:
             self.console.handle_error(f"An error occurred while writing to the .blitz.env file: {e}")
 
