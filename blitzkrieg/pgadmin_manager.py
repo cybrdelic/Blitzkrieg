@@ -33,7 +33,7 @@ class PgAdminManager:
         self.postgres_server_config_username = f"{self.workspace_name}-db-user"
         self.pgadmin_binding_config_path = '/pgadmin4/servers.json'
         self.console = console
-        self.servers_config_path = os.path.join(os.getcwd(), 'servers.json')
+        self.servers_config_path = os.path.join(os.getcwd(), self.workspace_name, 'servers.json')
 
     def teardown(self):
         self.docker_manager.remove_container(self.container_name)
