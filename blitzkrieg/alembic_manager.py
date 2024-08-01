@@ -23,7 +23,6 @@ class AlembicManager:
         self.sqlalchemy_models_path = os.path.join(self.workspace_path, 'sqlalchemy_models')
         self.alembic_init__template_path = os.path.join(os.getcwd(), 'blitzkrieg', 'workspace_management', 'templates', 'alembic_init.sh')
         self.workspace_requirements_txt_template_path = os.path.join(os.getcwd(), 'blitzkrieg', 'workspace_management', 'templates', 'requirements.txt')
-        self.initial_schema_names = ['project_management', 'event_management', 'workspace_management']
         self.initial_table_models = [Base, Project, Issue]
         self.models_directory = os.path.join(os.getcwd(), 'blitzkrieg', 'db', 'models')
         self.console = console if console else ConsoleInterface()
@@ -155,6 +154,8 @@ datefmt = %H:%M:%S
             alembic_init_content = self.get_alembic_init_content()
             with open(self.alembic_ini_path, 'w') as f:
                 f.write(alembic_init_content)
+            # take content that has $*workspace_name*$ and replace it with the actual workspace name, same for all other vars encapsulated by those chars
+            self.file_manager.replace_text_in_file(self.alembic_ini_path, '$*workspace_name*$', self.workspace_name)
             self.console.handle_success(f"Created alembic.ini file at [white]{self.alembic_ini_path}[/white]")
             self.console.display_file_content(self.alembic_ini_path)
         except Exception as e:
@@ -331,6 +332,7 @@ def run_migrations_online():
         context.configure(connection=connection, target_metadata=target_metadata)
         with context.begin_transaction():
             context.run_migrations()
+
 if context.is_offline_mode():
     run_migrations_offline()
 else:
