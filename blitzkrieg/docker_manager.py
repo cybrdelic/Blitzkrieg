@@ -2,21 +2,25 @@
 
 import docker
 from docker.errors import NotFound, APIError
+from blitzkrieg.blitz_env_manager import BlitzEnvManager
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
-from blitzkrieg.ui_management.decorators import with_spinner
+from blitzkrieg.ui_management.console_instance import console
 import time
 
 class DockerManager:
-    def __init__(self, console: ConsoleInterface = None):
+    def __init__(self, blitz_env_manager: BlitzEnvManager):
         self.client = docker.from_env()
-        self.console = console if console else ConsoleInterface()
+        self.console: ConsoleInterface = console
+        self.blitz_env_manager: BlitzEnvManager = blitz_env_manager
 
     def create_docker_network(self, network_name):
         """Create a Docker network if it doesn't exist."""
         try:
             self.console.handle_wait(f"Creating docker network {network_name} to run workspace containers together")
             network = self.client.networks.create(network_name)
+            self.blitz_env_manager.add_env_var_to_workspace_file('NETWORK_NAME', network_name)
             self.console.handle_success(f"Network '{network_name}' created successfully.")
+
 
             return network
 

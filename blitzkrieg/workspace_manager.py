@@ -2,6 +2,7 @@
 
 from prettytable import PrettyTable
 from blitzkrieg.alembic_manager import AlembicManager
+from blitzkrieg.blitz_env_manager import BlitzEnvManager
 from blitzkrieg.docker_manager import DockerManager
 from blitzkrieg.file_manager import FileManager
 from blitzkrieg.file_writers.workspace_docker_compose_writer import WorkspaceDockerComposeWriter
@@ -9,19 +10,21 @@ from blitzkrieg.file_writers.workspace_dockerfile_writer import WorkspaceDockerf
 from blitzkrieg.workspace_directory_manager import WorkspaceDirectoryManager
 from blitzkrieg.pgadmin_manager import PgAdminManager
 from blitzkrieg.postgres_manager import WorkspaceDbManager
-from blitzkrieg.ui_management.decorators import with_spinner
 from blitzkrieg.utils.port_allocation import find_available_port
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
+from blitzkrieg.ui_management.console_instance import console
 import os
 from prettytable import PrettyTable
 
+from blitzkrieg.workspace_management.templates.managers.workspace_docker_manager import WorkspaceDockerManager
+
 class WorkspaceManager:
-    def __init__(self, workspace_name, console: ConsoleInterface = None, email=None, password=None):
-        self.email: str = email
-        self.password: str = password
+    def __init__(self, workspace_name, blitz_env_manager: BlitzEnvManager = None):
+
+        self.blitz_env_manager = blitz_env_manager
         self.workspace_name: str = workspace_name
-        self.console: ConsoleInterface = console if console else ConsoleInterface()
-        self.docker_manager: DockerManager = DockerManager(console=self.console)
+        self.console: ConsoleInterface = console
+        self.docker_manager: DockerManager = DockerManager(blitz_env_manager=self.blitz_env_manager)
         self.postgres_port: int = find_available_port(5432)
         self.pgadmin_port: int = find_available_port(5050)
         self.pgadmin_manager:PgAdminManager = PgAdminManager(
@@ -29,22 +32,19 @@ class WorkspaceManager:
             pgadmin_port=self.pgadmin_port,
             workspace_name=self.workspace_name,
             console=self.console,
-            email=email,
-            password=password
+            blitz_env_manager=self.blitz_env_manager
         )
         self.file_manager: FileManager = FileManager()
         self.workspace_db_manager: WorkspaceDbManager = WorkspaceDbManager(
             port=self.postgres_port,
             workspace_name=self.workspace_name,
             console=self.console,
-            email=email,
-            password=password
+            blitz_env_manager=self.blitz_env_manager
         )
         self.workspace_directory_manager: WorkspaceDirectoryManager = WorkspaceDirectoryManager(
             workspace_name=self.workspace_name,
-            db_manager=self.workspace_db_manager,
             console_interface=self.console,
-            docker_manager=self.docker_manager
+            blitz_env_manager=self.blitz_env_manager
         )
         self.workspace_db_manager.set_workspace_directory_manager(self.workspace_directory_manager)
         self.docker_network_name: str = f"{self.workspace_name}-network"
@@ -60,6 +60,7 @@ class WorkspaceManager:
         self.workspace_dockerfile_writer = WorkspaceDockerfileWriter(workspace_path=self.workspace_directory_manager.workspace_path, console=self.console)
         self.workspace_docker_compose_writer = WorkspaceDockerComposeWriter(workspace_name=self.workspace_name, workspace_path=self.workspace_directory_manager.workspace_path, console=self.console, pgadmin_manager=self.pgadmin_manager, postgres_manager=self.workspace_db_manager)
         self.file_manager = FileManager()
+        self.workspace_docker_manager = WorkspaceDockerManager(blitz_env_manager=self.blitz_env_manager)
 
     def blitz_init(self):
         blitzkrieg_initialization_process = self.console.create_workflow("Blitzkrieg Initialization")
@@ -67,18 +68,33 @@ class WorkspaceManager:
         workspace_directory_initalization_group = self.console.create_phase(blitzkrieg_initialization_process, "Workspace Directory Initialization")
         workspace_docker_files_composition_group = self.console.create_phase(blitzkrieg_initialization_process, "Workspace Docker Files Composition")
         workspace_container_initialization = self.console.create_phase(blitzkrieg_initialization_process, "Workspace Container Initialization")
+        self.console.add_action(
+            phase=workspace_directory_initalization_group,
+            name="Creating workspace directory...",
+            func=self.workspace_directory_manager.create_workspace_directory
+        )
 
+        self.console.add_action(
+            phase=workspace_directory_initalization_group,
+            name="Creating workspace .blitz.env file",
+            func=self.blitz_env_manager.create_workspace_env_file
+        )
+        self.console.add_action(
+            phase=workspace_directory_initalization_group,
+            name="Creating global .blitz.env file",
+            func=self.blitz_env_manager.create_global_env_file
+        )
+
+        self.console.add_action(
+            phase=workspace_directory_initalization_group,
+            name="Saving workspace directory details to workspace .blitz.env",
+            func=self.workspace_directory_manager.save_workspace_directory_details_to_env_file
+        )
         self.console.add_action(
             phase=workspace_directory_initalization_group,
             name="Creating workspace docker network",
             func=self.docker_manager.create_docker_network,
             network_name=self.docker_network_name
-        )
-        # Workspace Directory Initialization
-        self.console.add_action(
-            phase=workspace_directory_initalization_group,
-            name="Creating workspace directory...",
-            func=self.workspace_directory_manager.create_workspace_directory
         )
 
         self.console.add_action(
@@ -147,13 +163,13 @@ class WorkspaceManager:
         self.console.add_action(
             phase=workspace_container_initialization,
             name="Building workspace container...",
-            func=self.workspace_directory_manager.build_workspace_container
+            func=self.workspace_docker_manager.build_workspace_container
         )
 
         self.console.add_action(
             phase=workspace_container_initialization,
             name="Starting workspace container...",
-            func=self.workspace_directory_manager.start_workspace_container
+            func=self.workspace_docker_manager.start_workspace_container
         )
 
         self.console.add_action(
@@ -217,27 +233,27 @@ class WorkspaceManager:
 
     def store_credentials(self):
         try:
-            with open(f"{self.workspace_directory_manager.workspace_path}/.env", "w") as f:
-                f.write(f"POSTGRES_USER={self.workspace_db_manager.db_user}\n")
-                f.write(f"POSTGRES_PASSWORD={self.workspace_db_manager.password}\n")
-                f.write(f"POSTGRES_DB={self.workspace_name}\n")
-                f.write(f"POSTGRES_HOST={self.workspace_db_manager.container_name}\n")
-                f.write(f"POSTGRES_PORT={self.workspace_db_manager.db_port}\n")
-                f.write(f"PGADMIN_DEFAULT_EMAIL={self.email}\n")
-                f.write(f"PGADMIN_DEFAULT_PASSWORD={self.password}\n")
-                f.write(f"PGADMIN_PORT={self.pgadmin_port}\n")
-                f.write(f"WORKSPACE_NAME={self.workspace_name}\n")
-                f.write(f"WORKSPACE_DIRECTORY={self.workspace_directory_manager.workspace_path}\n")
-                f.write(f"ALEMBIC_INI_PATH={self.alembic_manager.alembic_ini_path}\n")
-                f.write(f"ALEMBIC_ENV_PATH={self.alembic_manager.alembic_env_path}\n")
-                f.write(f"SQLALCHEMY_MODELS_PATH={self.alembic_manager.sqlalchemy_models_path}\n")
-                f.write(f"SQLALCHEMY_URI={self.workspace_db_manager.get_sqlalchemy_uri()}\n")
-                f.write(f"POSTGRES_SERVER_CONFIG_HOST={self.pgadmin_manager.postgres_server_config_host}\n")
-                f.write(f"POSTGRES_SERVER_CONFIG_USERNAME={self.pgadmin_manager.postgres_server_config_username}\n")
-                f.write(f"PGADMIN_BINDING_CONFIG_PATH={self.pgadmin_manager.pgadmin_binding_config_path}\n")
-            return self.console.handle_success(f"Stored the following credentials in an env file: {self.workspace_directory_manager.workspace_path}/.env")
+            workspace_env_vars = [
+                ("POSTGRES_USER", self.workspace_db_manager.db_user),
+                ("POSTGRES_DB", self.workspace_name),
+                ("POSTGRES_HOST", self.workspace_db_manager.container_name),
+                ("POSTGRES_PORT", self.workspace_db_manager.db_port),
+                ("PGADMIN_PORT", self.pgadmin_port),
+                ("WORKSPACE_NAME", self.workspace_name),
+                ("WORKSPACE_DIRECTORY", self.workspace_directory_manager.workspace_path),
+                ("ALEMBIC_INI_PATH", self.alembic_manager.alembic_ini_path),
+                ("ALEMBIC_ENV_PATH", self.alembic_manager.alembic_env_path),
+                ("SQLALCHEMY_MODELS_PATH", self.alembic_manager.sqlalchemy_models_path),
+                ("SQLALCHEMY_URI", self.workspace_db_manager.get_sqlalchemy_uri()),
+                ("POSTGRES_SERVER_CONFIG_HOST", self.pgadmin_manager.postgres_server_config_host),
+                ("POSTGRES_SERVER_CONFIG_USERNAME", self.pgadmin_manager.postgres_server_config_username),
+                ("PGADMIN_BINDING_CONFIG_PATH", self.pgadmin_manager.pgadmin_binding_config_path)
+            ]
+
+            for var, val in workspace_env_vars:
+                self.blitz_env_manager.add_env_var_to_workspace_file(var, val)
         except Exception as e:
-            return self.console.handle_error(f"Failed to store credentials: {str(e)}")
+            self.console.handle_error(f"An error occurred while storing workspace credentials: {e}")
 
 
 

@@ -7,11 +7,34 @@ Blitzkrieg simplifies software development by automating CLI project setups and 
 
 ## Key Features
 
-- **Project Initialization:** Automate CLI project setups with predefined templates to reduce setup time.
-- **PostgreSQL Database Configuration:** Ensure databases are optimized for performance and security from the start.
-- **Issue Synchronization:** Maintain issue synchronization across databases, GitHub, and local documentation.
-- **Scalability:** Easily replicate setups across multiple projects with minimal commands.
+1. **Workspace Management**
+   - Automated setup of development workspaces
+   - Creation and management of Docker networks for isolated environments
+   - Initialization of project directories with necessary configurations
 
+2. **Database Management**
+   - Automated PostgreSQL database setup and configuration
+   - Integration with PgAdmin for database administration
+   - Dynamic management of database connections and credentials
+
+3. **Migration Handling**
+   - Alembic integration for database schema migrations
+   - Automatic setup of Alembic configuration files
+   - Dynamic modification of migration files for schema creation
+
+4. **Docker Integration**
+   - Automated creation and management of Docker containers
+   - Generation of Dockerfile and docker-compose configurations
+   - Handling of container lifecycle (creation, startup, teardown)
+
+5. **Environment Configuration**
+   - Automated creation and management of .env files
+   - Dynamic allocation of ports for services
+   - Centralized management of environment variables
+
+6. **Project Scaffolding**
+   - Creation of basic project structure
+   - Setup of SQLAlchemy models
 ## Getting Started
 
 ### Prerequisites
@@ -28,29 +51,41 @@ pip install blitzkrieg
 
 ### Usage
 
-#### Setting up Blitzkrieg environment
+1. **Creating a Blitzkrieg Workspace**
 To initialize Blitzkrieg on your local:
 ```bash
-blitz init <workspace_name>
+blitz create workspace <workspace_name>
 ```
 
 This sets up your workspace database and workspace pgadmin instance, as well as your workspace directory - so that Blitzkrieg can manage your projects and databases. The ```workspace_name``` can be an organization name, first and last name, etc.
 
-#### Setting Up a New Project
-To initialize a new CLI project:
+2. **cd Into New Workspace**
 ```bash
-blitz create cli <project_name>
-```
-To initialize a new CLI project along with a PostgreSQL database:
-
-```bash
-blitz create cli <project_name> --db
+cd <workspace_name>
 ```
 
-This command will set up your new project directory and link it to a newly configured PostgreSQL database based on best practices for development.
+3. **Create a New CLI Tool**
+```bash
+blitz create project <project_name>
+```
+
+4. **cd Into New Project**
+```bash
+cd <project_name>
+```
+
+5. **Release Project**
+```bash
+blitz release <project_name>
+```
+
+7. (side quest) **Deleting a Blitzkrieg Workspace:** To delete a workspace, simply enter into the CLI:
+```bash
+blitz delete <workspace_name>
+```
 
 #### Synchronizing Issues and Documentation
-To ensure all your issues are up-to-date across different platforms:
+To ensure all your issues are up-to-date across blitzkrieg, your local host directory, and github issues:
 
 ```bash
 blitz sync
@@ -61,9 +96,8 @@ This will update your project management tools and local documentation to reflec
 ## Core Innovations
 
 - **Autonomous Software Lifecycle Management**: Automates every phase of development, from environment setup to production deployment.
-- **Advanced Project Extrapolation**: Utilizes AI to analyze project specifications and automatically generate development tasks and manage timelines.
-- **AI-Powered Code Generation**: Seamlessly integrates with AI systems like Sweep AI to execute development tasks, including coding and testing.
-- **Intuitive Sync between Documentation and Execution**: Dynamically links project documentation in the `.docs` directory with actionable development tasks, ensuring documentation always aligns with the current project state.
+- **Advanced Project Extrapolation (Coming Soon)**: Utilizes AI to analyze project specifications and automatically generate development tasks and manage timelines.
+- **AI-Powered Code Generation (Coming Soon)**: Seamlessly integrates with AI systems like Sweep AI to execute development tasks, including coding and testing.
 
 ## Objectives
 
@@ -75,16 +109,16 @@ This will update your project management tools and local documentation to reflec
 ## Design Principles
 
 - **Full Autonomy**: Designed to operate independently, learning and adapting from ongoing projects without needing human guidance.
-- **Efficiency and Speed**: Optimizes all processes to minimize development time and resource consumption.
-- **Scalability**: Capable of managing projects of any size, from small startups to large enterprise applications.
+- **Efficiency and Speed**: Optimizes all processes to minimize development time.
+- **Scalability**: Capable of managing projects of any size, from small startups to large enterprise applications (hopefully).
 - **Multiple Interaction Modes**: Offers flexible interaction through CLI commands, document editing, or direct inputs, catering to various user preferences.
 - **Continuous Innovation**: Regularly updated with the latest technological advancements to stay at the forefront of the development tools industry.
 
 ## Vision for the Future
-Blitzkrieg is not just a project initialization tool—it's evolving into a comprehensive development management system. Future enhancements will focus on:
+Blitzkrieg is not just a project initialization tool—it's evolving into an intelligent context-aware development environment. Future enhancements will focus on:
 
 - **Advanced AI Integration**: Automating more complex aspects of software development, including code generation and issue resolution based on AI learning from project data.
-- **Project Extrapolation**: Using inputs from initial project descriptions to automatically generate detailed project roadmaps and resource allocation plans.
+- **Project Extrapolation**: Using inputs from initial project descriptions to automatically generate detailed project roadmaps and, ultimately tickets/issues.
 - **Continuous Integration/Continuous Deployment (CI/CD) Automation**: Fully automating the CI/CD pipelines, enabling seamless deployments directly from the development environment.
 
 ## Stages of Blitzkrieg Development

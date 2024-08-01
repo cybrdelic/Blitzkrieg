@@ -16,6 +16,7 @@ from termcolor import colored
 import shutil
 import pyperclip
 import io
+import os
 
 # Setup structured and colored logging
 logging.basicConfig(
@@ -136,6 +137,10 @@ class FileManager:
         syntax = Syntax(content, lexer, theme='monokai', line_numbers=True)
         self.console.print(syntax)
         self.output_buffer.write(content + "\n")
+
+    def file_exists(self, file_path):
+        return os.path.isfile(file_path)
+
 
 class CommandExecutor:
     def __init__(self, logger: Logger, spinner: CustomSpinner):
@@ -293,7 +298,6 @@ class Phase:
         for action in self.actions:
             action.run()
         self.status = 'completed'
-
 class ConsoleInterface:
     def __init__(self):
         self.logger = Logger()
@@ -320,10 +324,13 @@ class ConsoleInterface:
         return action
 
     def handle_success(self, message):
+        self._ensure_spinner_started()
         self.spinner.succeed(message)
         self.logger.output_buffer.write(f"✔ {message}\n")
+        self.spinner.stop()
 
     def handle_error(self, message, error_object=None):
+        self._ensure_spinner_started()
         self.spinner.fail(message)
         self.logger.output_buffer.write(f"✖ {message}\n")
         if error_object:
@@ -340,15 +347,20 @@ class ConsoleInterface:
             self.logger.console.print(error_panel)
         else:
             self.logger.console.print(Panel(f"[bold red]{message}", border_style="red"))
+        self.spinner.stop()
 
     def handle_wait(self, message):
+        self._ensure_spinner_started()
         self.spinner.text = message
         self.spinner.start()
         self.logger.output_buffer.write(f"... {message}\n")
+        self.spinner.stop()
 
     def handle_info(self, message):
+        self._ensure_spinner_started()
         self.spinner.info(message)
         self.logger.output_buffer.write(f"ℹ {message}\n")
+        self.spinner.stop()
 
     def run_workflow(self, workflow: Dict[str, Any]):
         for phase in workflow['phases']:
@@ -372,6 +384,7 @@ class ConsoleInterface:
 
     def execute_command(self, command, directory, message=None):
         try:
+            self._ensure_spinner_started()
             result = self.command_executor.execute_command(command, directory, message)
             self.spinner.stop()
             return result
@@ -381,6 +394,7 @@ class ConsoleInterface:
 
     def execute_docker_command(self, command, directory, message=None):
         try:
+            self._ensure_spinner_started()
             result = self.command_executor.execute_docker_command(command, directory, message)
             self.spinner.stop()
             return result
@@ -390,3 +404,7 @@ class ConsoleInterface:
 
     def display_file_content(self, file_path):
         self.file_manager.display_file_content(file_path)
+
+    def _ensure_spinner_started(self):
+        if not self.spinner.thread.is_alive():
+            self.spinner.start()

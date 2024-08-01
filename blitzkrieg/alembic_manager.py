@@ -23,15 +23,12 @@ class AlembicManager:
         self.sqlalchemy_models_path = os.path.join(self.workspace_path, 'sqlalchemy_models')
         self.alembic_init__template_path = os.path.join(os.getcwd(), 'blitzkrieg', 'workspace_management', 'templates', 'alembic_init.sh')
         self.workspace_requirements_txt_template_path = os.path.join(os.getcwd(), 'blitzkrieg', 'workspace_management', 'templates', 'requirements.txt')
-        self.initial_schema_names = ['project_management', 'event_management', 'workspace_management']
         self.initial_table_models = [Base, Project, Issue]
         self.models_directory = os.path.join(os.getcwd(), 'blitzkrieg', 'db', 'models')
         self.console = console if console else ConsoleInterface()
         self.init_paths = [
             self.workspace_path,
             os.path.join(self.workspace_path, 'sqlalchemy_models'),
-            os.path.join(self.workspace_path, 'alembic'),
-            os.path.join(self.workspace_path, 'alembic', 'versions')
         ]
     def get_alembic_init_content(self):
         return f"""
@@ -157,6 +154,8 @@ datefmt = %H:%M:%S
             alembic_init_content = self.get_alembic_init_content()
             with open(self.alembic_ini_path, 'w') as f:
                 f.write(alembic_init_content)
+            # take content that has $*workspace_name*$ and replace it with the actual workspace name, same for all other vars encapsulated by those chars
+            self.file_manager.replace_text_in_file(self.alembic_ini_path, '$*workspace_name*$', self.workspace_name)
             self.console.handle_success(f"Created alembic.ini file at [white]{self.alembic_ini_path}[/white]")
             self.console.display_file_content(self.alembic_ini_path)
         except Exception as e:
@@ -333,6 +332,7 @@ def run_migrations_online():
         context.configure(connection=connection, target_metadata=target_metadata)
         with context.begin_transaction():
             context.run_migrations()
+
 if context.is_offline_mode():
     run_migrations_offline()
 else:
@@ -344,47 +344,3 @@ else:
         with open(self.alembic_env_path, 'w') as env_file:
             env_file.write(content)
         self.console.handle_info("Alembic env.py file updated successfully with target metadata and sys.path.append() for SQLAlchemy models.")
-
-
-    def setup_alembic_for_schemas(self):
-        return
-
-    def modify_migration_for_schema(self, schema_name, migration_label):
-        self.console.handle_wait(f"Modifying migration file for schema creation: {schema_name}. Migration label: {migration_label}...")
-        self.console.handle_info(f"Modifiying migration file for schema creation: {schema_name}. Migration label: {migration_label}...")
-        migration_file = self.find_migration_file(migration_label)
-        if migration_file:
-            self.insert_schema_creation_sql(migration_file, schema_name)
-
-    def find_migration_file(self, label):
-        versions_path = os.path.join(self.migrations_path, 'versions')
-        for filename in os.listdir(versions_path):
-            if label in filename:
-                migration_file_path = os.path.join(versions_path, filename)
-                self.console.handle_info(f"Found migration file: {migration_file_path}")
-                return migration_file_path
-        return None
-
-    def insert_schema_creation_sql(self, migration_file, schema_name):
-        try:
-            with open(migration_file, 'r+') as file:
-                content = file.read()
-                import re
-                pattern = r'def upgrade\(\) *-> *None:'
-                match = re.search(pattern, content)
-                if match:
-                    position = match.start()
-                    upgrade_section = f"\n    op.execute('CREATE SCHEMA IF NOT EXISTS {schema_name}')\n"
-                    content = content[:position + len(match.group())] + upgrade_section + content[position + len(match.group()):]
-                    file.seek(0)
-                    file.write(content)
-                    file.truncate()
-                    self.console.handle_success(f"Successfully inserted schema creation SQL into migration file: {migration_file}")
-                else:
-                    self.console.handle_error(f"Failed to find 'def upgrade() -> None:' in migration file: {migration_file}. Position: {match}")
-        except FileNotFoundError:
-            self.console.handle_error(f"Migration file not found: {migration_file}")
-        except IOError as e:
-            self.console.handle_error(f"IOError while handling migration file: {migration_file}, Error: {e}")
-        except Exception as e:
-            self.console.handle_error(f"An unexpected error occurred: {e}")
