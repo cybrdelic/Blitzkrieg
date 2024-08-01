@@ -36,7 +36,7 @@ class WorkspaceDockerComposeWriter(BaseDockerComposeWriter):
                 'volumes': ['postgres_data:/var/lib/postgresql/data'],
                 'networks': [self.network_name],
                 'healthcheck': {
-                    'test': ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}'],
+                    'test': ['CMD-SHELL', f'pg_isready -U {self.workspace_name}-db-user -d {self.workspace_name}'],
                     'interval': '10s',
                     'timeout': '5s',
                     'retries': 5
