@@ -1,34 +1,43 @@
 #!/bin/bash
 
-# Fail on any error
-set -e
+# Fail on any error and print each command as it's executed
+set -ex
 
-# Navigate to the application directory
+# Redirect stderr to stdout
+exec 2>&1
+
+echo "Navigating to the application directory"
 cd /app
 
-# List the contents of /app
+echo "Listing contents of /app"
 ls -la /app
 
-# Create necessary directories
+echo "Creating sqlalchemy_models directory"
 mkdir -p /app/sqlalchemy_models
 
-# Initialize Alembic
+echo "Initializing Alembic"
 alembic init migrations
+
+echo "Listing contents of /app after Alembic initialization"
 ls -la /app
 
-# Ensure the correct permissions for the migrations directory
+echo "Showing the contents of the migrations/env.py file"
+cat /app/migrations/env.py
+
+echo "Setting permissions for directories"
 chown -R 1000:1000 /app/migrations
 chmod -R 775 /app/migrations
+chown -R 1000:1000 /app
+chmod -R 775 /app
 
+
+echo "Listing contents of /app after setting permissions"
 ls -la /app
 
-# replace env.py at /app/migrations/env.py with the one from /app/env.py
-cp /app/env.py /app/migrations/env.py
-
-# Update alembic.ini with the correct database URL
+echo "Updating alembic.ini with correct database URL"
 sed -i "s|^sqlalchemy.url = .*|sqlalchemy.url = postgresql+psycopg2://$*workspace_name*$-db-user:pw@$*workspace_name*$-postgres:5432/$*workspace_name*$|g" /app/alembic.ini
 
-# Create necessary migration files
+echo "Creating env.py file..."
 cat <<EOL > /app/env.py
 from sqlalchemy import create_engine, text
 from alembic import context
@@ -62,10 +71,10 @@ config.set_main_option('sqlalchemy.url', url)
 target_metadata = Base.metadata
 
 def create_schemas(connection):
-    connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS project_management'))
-    connection.commit()  # Ensure the schema creation is committed
+    print("Attempting to create schema: project_management")
+    connection.execute(text('CREATE SCHEMA IF NOT EXISTS project_management'))
+    connection.commit()
     print('Created schema: project_management')
-
 
 def run_migrations_offline():
     context.configure(url=url, target_metadata=target_metadata, literal_binds=True)
@@ -75,17 +84,54 @@ def run_migrations_offline():
 def run_migrations_online():
     connectable = create_engine(url)
     with connectable.connect() as connection:
-        create_schemas(connection)  # Create necessary schemas before running migrations
-        context.configure(connection=connection, target_metadata=target_metadata)
+        create_schemas(connection)
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            include_schemas=True,
+            include_object=lambda obj, name, type_, reflected, compare_to: obj.schema != 'public' if type_ == 'table' else True
+        )
         with context.begin_transaction():
             context.run_migrations()
 
 if context.is_offline_mode():
+    print('Running migrations offline...')
     run_migrations_offline()
 else:
+    print('Running migrations online...')
     run_migrations_online()
 EOL
 
-# Run initial migration
+echo "env.py file created. Contents:"
+cat /app/env.py
+
+echo "Copying env.py to migrations directory..."
+rm -f /app/migrations/env.py
+cp /app/env.py /app/migrations/env.py
+
+echo "Verifying env.py copy..."
+if cmp -s /app/env.py /app/migrations/env.py; then
+    echo "env.py successfully copied to migrations directory"
+else
+    echo "Failed to copy env.py to migrations directory"
+    exit 1
+fi
+
+echo "Contents of /app/migrations/env.py:"
+cat /app/migrations/env.py
+
+echo "Running initial migration..."
 alembic revision --autogenerate -m "initial migration"
+
+echo "Upgrading to head..."
 alembic upgrade head
+
+echo "Setting permissions for directories"
+chown -R 1000:1000 /app/migrations/__pycache__ || true
+chmod -R 775 /app/migrations/__pycache__ || true
+chown -R 1000:1000 /app/sqlalchemy_models/__pycache__ || true
+chmod -R 775 /app/sqlalchemy_models/__pycache__ || true
+chmod -R 1000:1000 /app/migrations/versions || true
+chmod -R 775 /app/migrations/versions || true
+
+echo "Script completed successfully"
