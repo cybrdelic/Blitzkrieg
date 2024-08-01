@@ -66,6 +66,8 @@ def setup_test():
 @click.option('--version', prompt='New version number', help='The new version number for the release')
 def release(version):
     """Set up Poetry and release a new version of Blitzkrieg to PyPI"""
+    blitz_env_manager = BlitzEnvManager()
+
     try:
         # Validate the version number
         packaging_version.parse(version)
@@ -97,9 +99,9 @@ def release(version):
 
         # Check for PyPI credentials
         pypi_username = "__token__"
-        pypi_api_key = "pypi key"
-        if not pypi_username or not pypi_api_key:
-            click.echo("PYPI_USERNAME or PYPI_API_KEY environment variable is not set. Please set both and try again.")
+        pypi_api_key = blitz_env_manager.get_env_var_value_from_global_env_file('PYPI_API_KEY')
+        if not pypi_api_key:
+            click.echo("PYPI_API_KEY is not set in the global .blitz.env file. Please set it and try again.")
             return
 
         # Publish to PyPI
@@ -119,6 +121,7 @@ def release(version):
         click.echo(f"An error occurred during the release process: {str(e)}")
     except Exception as e:
         click.echo(f"An unexpected error occurred: {str(e)}")
+
 if __name__ == "__main__":
     click.echo("Starting the application...")
     main()
