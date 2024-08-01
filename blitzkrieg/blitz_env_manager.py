@@ -3,7 +3,7 @@ from blitzkrieg.ui_management.console_instance import console
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface, FileManager
 
 class BlitzEnvManager:
-    def __init__(self, workspace_name: str):
+    def __init__(self, workspace_name: str = None):
         self.console = console
         self.workspace_name = workspace_name
         self.file_name = '.blitz.env'
