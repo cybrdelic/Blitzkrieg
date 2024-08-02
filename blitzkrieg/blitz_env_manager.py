@@ -1,3 +1,5 @@
+# blitzkrieg/blitz_env_manager.py
+
 import os
 from blitzkrieg.ui_management.console_instance import console
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface, FileManager
@@ -7,9 +9,13 @@ class BlitzEnvManager:
         self.console = console
         self.workspace_name = workspace_name
         self.file_name = '.blitz.env'
-        self.workspace_file_path = os.path.join(os.getcwd(), self.workspace_name, self.file_name)
         self.global_env_file_path = os.path.join(os.getcwd(), self.file_name)
         self.file_manager = FileManager()
+
+        if workspace_name is not None:
+            self.workspace_file_path = os.path.join(os.getcwd(), workspace_name, self.file_name)
+        else:
+            self.workspace_file_path = None
 
     def __get_env_var_line_value(self, key: str, value: str) -> str:
         return f"{key.upper()}={value}\n"
@@ -64,31 +70,50 @@ class BlitzEnvManager:
         return value
 
     def get_env_var_value_from_workspace_env_file(self, key: str) -> str:
+        if self.workspace_file_path is None:
+            self.console.handle_error("No workspace is currently set. Please set a workspace first.")
+            return None
         return self.__get_env_var_value(key, self.workspace_file_path)
 
     def get_env_var_value_from_global_env_file(self, key: str) -> str:
         return self.__get_env_var_value(key, self.global_env_file_path)
 
     def add_env_var_to_workspace_file(self, key: str, value: str) -> None:
+        if self.workspace_file_path is None:
+            self.console.handle_error("No workspace is currently set. Please set a workspace first.")
+            return
         self.__add_env_var_line_to_file(key, value, self.workspace_file_path)
 
     def add_env_var_to_global_file(self, key: str, value: str) -> None:
         self.__add_env_var_line_to_file(key, value, self.global_env_file_path)
 
     def workspace_env_file_exists(self) -> bool:
+        if self.workspace_file_path is None:
+            return False
         return self.__env_file_exists(self.workspace_file_path)
 
     def global_env_file_exists(self) -> bool:
         return self.__env_file_exists(self.global_env_file_path)
 
     def create_workspace_env_file(self) -> None:
+        if self.workspace_file_path is None:
+            self.console.handle_error("No workspace is currently set. Please set a workspace first.")
+            return
         self.__create_env_file(self.workspace_file_path)
 
     def create_global_env_file(self) -> None:
         self.__create_env_file(self.global_env_file_path)
 
     def ensure_workspace_env_var(self, key: str, value_prompt: str) -> str:
+        if self.workspace_file_path is None:
+            self.console.handle_error("No workspace is currently set. Please set a workspace first.")
+            return None
         return self.__ensure_env_var(key, value_prompt, self.workspace_file_path)
 
     def ensure_global_env_var(self, key: str, value_prompt: str) -> str:
         return self.__ensure_env_var(key, value_prompt, self.global_env_file_path)
+
+    def is_env_file_a_workspace_env_file(self) -> bool:
+        env_file_path = os.path.join(os.getcwd(), self.file_name)
+        is_cwd_a_workspace_dir = self.__get_env_var_value("IS_WORKSPACE", env_file_path)
+        return is_cwd_a_workspace_dir == "True"
