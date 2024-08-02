@@ -39,6 +39,7 @@ class WorkspaceDirectoryManager:
             self.blitz_env_manager.add_env_var_to_workspace_file('WORKSPACE_PATH', self.workspace_path)
             self.blitz_env_manager.add_env_var_to_workspace_file('IS_WORKSPACE', True)
             self.blitz_env_manager.add_env_var_to_workspace_file('WORKSPACE_NAME', self.workspace_name)
+            self.blitz_env_manager.add_env_var_to_global_file("CURRENT_WORKSPACE", self.workspace_name)
             return self.console.handle_success(f"Saved workspace directory details to .blitz.env file")
         except Exception as e:
             return self.console.handle_error(f"Failed to save workspace directory details to .blitz.env file: {str(e)}")
