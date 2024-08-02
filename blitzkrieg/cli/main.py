@@ -121,7 +121,36 @@ def release(version):
         click.echo(f"An error occurred during the release process: {str(e)}")
     except Exception as e:
         click.echo(f"An unexpected error occurred: {str(e)}")
+# blitz create-project <project_type='cli' | 'lib'> <project_name> <project_description>
+@main.command('create-project')
+@click.option('--name', prompt='Project name', help='The name of the project')
+@click.option('--description', prompt='Project description', help='A brief description of the project')
+def create_project(name, description):
+    """Create a new project within the current workspace."""
+    try:
+        # First, try to get the workspace name from the environment
+        blitz_env_manager = BlitzEnvManager()
+        workspace_name = blitz_env_manager.get_env_var_value_from_global_env_file('CURRENT_WORKSPACE')
 
+        if not workspace_name:
+            click.echo("No current workspace found. Please create or select a workspace first.")
+            return
+
+        # Now initialize BlitzEnvManager with the workspace name
+        blitz_env_manager = BlitzEnvManager(workspace_name)
+
+        if not blitz_env_manager.workspace_env_file_exists():
+            click.echo(f"Workspace environment file not found for '{workspace_name}'. Please ensure the workspace exists.")
+            return
+
+        # Rest of your create_project logic here
+        click.echo(f"Creating project '{name}' in workspace '{workspace_name}'")
+        click.echo(f"Description: {description}")
+
+        # Add your project creation logic here
+
+    except Exception as e:
+        click.echo(f"An error occurred while creating the project: {str(e)}")
 if __name__ == "__main__":
     click.echo("Starting the application...")
     main()
