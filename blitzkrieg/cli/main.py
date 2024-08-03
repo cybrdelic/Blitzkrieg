@@ -122,10 +122,14 @@ def release(version):
     except Exception as e:
         click.echo(f"An unexpected error occurred: {str(e)}")
 # blitz create-project <project_type='cli' | 'lib'> <project_name> <project_description>
+from cookiecutter.main import cookiecutter
+import os
+
 @main.command('create-project')
+@click.option('--type', type=click.Choice(['cli', 'lib']), prompt='Project type', help='The type of project (cli or lib)')
 @click.option('--name', prompt='Project name', help='The name of the project')
 @click.option('--description', prompt='Project description', help='A brief description of the project')
-def create_project(name, description):
+def create_project(type, name, description):
     """Create a new project within the current workspace."""
     try:
         # First, try to get the workspace name from the environment
@@ -143,11 +147,35 @@ def create_project(name, description):
             click.echo(f"Workspace environment file not found for '{workspace_name}'. Please ensure the workspace exists.")
             return
 
-        # Rest of your create_project logic here
-        click.echo(f"Creating project '{name}' in workspace '{workspace_name}'")
-        click.echo(f"Description: {description}")
+        # Get the workspace directory
+        workspace_dir = blitz_env_manager.get_env_var_value_from_workspace_env_file('WORKSPACE_DIRECTORY')
+        if not workspace_dir:
+            click.echo("Workspace directory not found. Please ensure the workspace is set up correctly.")
+            return
 
-        # Add your project creation logic here
+        # Path to your custom Cookiecutter template
+        template_path = os.path.join(os.path.dirname(__file__), '..', 'templates', f'poetry-{type}-template')
+
+        if not os.path.exists(template_path):
+            click.echo(f"Template for {type} projects not found. Please ensure the template exists.")
+            return
+
+        # Use Cookiecutter to create the project
+        cookiecutter(
+            template_path,
+            no_input=True,
+            extra_context={
+                'project_name': name,
+                'project_slug': name.lower().replace(' ', '_'),
+                'project_description': description,
+                'author_name': blitz_env_manager.get_env_var_value_from_global_env_file('AUTHOR_NAME') or 'Your Name',
+                'author_email': blitz_env_manager.get_env_var_value_from_global_env_file('AUTHOR_EMAIL') or 'your.email@example.com',
+            },
+            output_dir=workspace_dir
+        )
+
+        click.echo(f"Successfully created {type} project '{name}' in workspace '{workspace_name}'")
+        click.echo(f"Project path: {os.path.join(workspace_dir, name.lower().replace(' ', '_'))}")
 
     except Exception as e:
         click.echo(f"An error occurred while creating the project: {str(e)}")
