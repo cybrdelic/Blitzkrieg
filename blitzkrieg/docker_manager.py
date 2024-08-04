@@ -18,7 +18,7 @@ class DockerManager:
         try:
             self.console.handle_wait(f"Creating docker network {network_name} to run workspace containers together")
             network = self.client.networks.create(network_name)
-            self.blitz_env_manager.add_env_var_to_workspace_file('NETWORK_NAME', network_name)
+            self.blitz_env_manager.set_workspace_env_var('NETWORK_NAME', network_name)
             self.console.handle_success(f"Network '{network_name}' created successfully.")
 
 

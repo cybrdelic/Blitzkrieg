@@ -99,7 +99,7 @@ def release(version):
 
         # Check for PyPI credentials
         pypi_username = "__token__"
-        pypi_api_key = blitz_env_manager.get_env_var_value_from_global_env_file('PYPI_API_KEY')
+        pypi_api_key = blitz_env_manager.get_global_var('PYPI_API_KEY')
         if not pypi_api_key:
             click.echo("PYPI_API_KEY is not set in the global .blitz.env file. Please set it and try again.")
             return
@@ -125,6 +125,24 @@ def release(version):
 from cookiecutter.main import cookiecutter
 import os
 
+# find the difference between two file paths to try to navigate from the first path to the second
+def find_path_difference(path1, path2):
+    path1 = path1.split(os.path.sep)
+    path2 = path2.split(os.path.sep)
+
+    # find the common prefix
+    i = 0
+    while i < len(path1) and i < len(path2) and path1[i] == path2[i]:
+        i += 1
+
+    # find the relative path from path1 to the common prefix
+    rel_path = ['..'] * (len(path1) - i)
+
+    # find the relative path from the common prefix to path2
+    rel_path += path2[i:]
+
+    return os.path.sep.join(rel_path)
+
 @main.command('create-project')
 @click.option('--type', type=click.Choice(['cli', 'lib']), prompt='Project type', help='The type of project (cli or lib)')
 @click.option('--name', prompt='Project name', help='The name of the project')
@@ -134,7 +152,7 @@ def create_project(type, name, description):
     try:
         # First, try to get the workspace name from the environment
         blitz_env_manager = BlitzEnvManager()
-        workspace_name = blitz_env_manager.get_env_var_value_from_global_env_file('CURRENT_WORKSPACE')
+        workspace_name = blitz_env_manager.get_global_var('CURRENT_WORKSPACE')
 
         if not workspace_name:
             click.echo("No current workspace found. Please create or select a workspace first.")
@@ -148,7 +166,7 @@ def create_project(type, name, description):
             return
 
         # Get the workspace directory
-        workspace_dir = blitz_env_manager.get_env_var_value_from_workspace_env_file('WORKSPACE_DIRECTORY')
+        workspace_dir = blitz_env_manager.get_workspace_env_var('WORKSPACE_DIRECTORY')
         if not workspace_dir:
             click.echo("Workspace directory not found. Please ensure the workspace is set up correctly.")
             return
@@ -168,8 +186,8 @@ def create_project(type, name, description):
                 'project_name': name,
                 'project_slug': name.lower().replace(' ', '_'),
                 'project_description': description,
-                'author_name': blitz_env_manager.get_env_var_value_from_global_env_file('AUTHOR_NAME') or 'Your Name',
-                'author_email': blitz_env_manager.get_env_var_value_from_global_env_file('AUTHOR_EMAIL') or 'your.email@example.com',
+                'author_name': blitz_env_manager.get_global_var('AUTHOR_NAME') or 'Your Name',
+                'author_email': blitz_env_manager.get_global_var('AUTHOR_EMAIL') or 'your.email@example.com',
             },
             output_dir=workspace_dir
         )

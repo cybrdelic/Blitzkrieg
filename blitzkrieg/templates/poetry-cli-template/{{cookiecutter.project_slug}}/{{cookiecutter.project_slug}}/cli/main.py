@@ -1,7 +1,11 @@
 
 import click
+import subprocess
+from blitzkrieg.blitz_env_manager import BlitzEnvManager
+from packaging import version as packaging_version
+import os
 
-@click.command()
+@click.group()
 def main():
     """{{cookiecutter.project_description}}"""
     click.echo("Hello from {{cookiecutter.project_name}}!")

@@ -77,12 +77,12 @@ class WorkspaceManager:
         self.console.add_action(
             phase=workspace_directory_initalization_group,
             name="Creating workspace .blitz.env file",
-            func=self.blitz_env_manager.create_workspace_env_file
+            func=self.blitz_env_manager.ensure_workspace_env_file
         )
         self.console.add_action(
             phase=workspace_directory_initalization_group,
             name="Creating global .blitz.env file",
-            func=self.blitz_env_manager.create_global_env_file
+            func=self.blitz_env_manager.ensure_global_env_file
         )
 
         self.console.add_action(
@@ -251,7 +251,7 @@ class WorkspaceManager:
             ]
 
             for var, val in workspace_env_vars:
-                self.blitz_env_manager.add_env_var_to_workspace_file(var, val)
+                self.blitz_env_manager.set_workspace_env_var(var, val)
         except Exception as e:
             self.console.handle_error(f"An error occurred while storing workspace credentials: {e}")
 
