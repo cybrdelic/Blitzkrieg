@@ -1,18 +1,14 @@
 
 from blitzkrieg.alembic_manager import AlembicManager
-from blitzkrieg.blitz_env_manager import BlitzEnvManager
+from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
+from blitzkrieg.class_instances.docker_manager import docker_manager
 from blitzkrieg.db.models.base import Base
 from blitzkrieg.db.models.environment_variable import EnvironmentVariable
 from blitzkrieg.db.models.workspace import Workspace
-from blitzkrieg.docker_manager import DockerManager
 from blitzkrieg.pgadmin_manager import PgAdminManager
-from blitzkrieg.utils.port_allocation import find_available_port
-import json
 from blitzkrieg.utils.run_command import run_command
 import time
-from docker.errors import NotFound
-from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
-from blitzkrieg.ui_management.decorators import with_spinner
+from blitzkrieg.ui_management.console_instance import console
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
 import uuid
@@ -25,19 +21,17 @@ class WorkspaceDbManager:
     def __init__(
             self,
             port,
-            blitz_env_manager: BlitzEnvManager,
             workspace_name: str = None,
-            console: ConsoleInterface = None
     ):
         self.workspace_name = workspace_name
-        self.blitz_env_manager: BlitzEnvManager = blitz_env_manager
+        self.blitz_env_manager = blitz_env_manager
         self.db_user = f"{self.workspace_name}-db-user"
         self.db_port = port
         self.network_name = f"{self.workspace_name}-network"
         self.container_name = f"{self.workspace_name}-postgres"
         self.image_name = "postgres:latest"
-        self.console_interface = console if console else ConsoleInterface()
-        self.docker_manager = DockerManager(blitz_env_manager=self.blitz_env_manager)
+        self.console_interface = console
+        self.docker_manager = docker_manager
         self.pgadmin_manager: PgAdminManager = None
         self.workspace_directory_manager: WorkspaceDirectoryManager = None
         self.alembic_manager: AlembicManager = None
@@ -81,12 +75,12 @@ class WorkspaceDbManager:
         # Save environment variables
         env_vars = {
             "POSTGRES_USER": self.db_user,
-            "POSTGRES_PASSWORD": self.blitz_env_manager.ensure_global_env_var('PASSWORD', 'Enter your password: '),
+            "POSTGRES_PASSWORD": self.blitz_env_manager.set_global_env_var('PASSWORD', 'Enter your password: '),
             "POSTGRES_DB": self.workspace_name,
             "POSTGRES_HOST": self.container_name,
             "POSTGRES_PORT": self.db_port,
-            "PGADMIN_DEFAULT_EMAIL": self.blitz_env_manager.ensure_global_env_var('EMAIL', 'Enter your email: '),
-            "PGADMIN_DEFAULT_PASSWORD": self.blitz_env_manager.ensure_global_env_var('PASSWORD', 'Enter your password: '),
+            "PGADMIN_DEFAULT_EMAIL": self.blitz_env_manager.set_global_env_var('EMAIL', 'Enter your email: '),
+            "PGADMIN_DEFAULT_PASSWORD": self.blitz_env_manager.set_global_env_var('PASSWORD', 'Enter your password: '),
             "PGADMIN_PORT": self.pgadmin_manager.pgadmin_port,
             "WORKSPACE_NAME": self.workspace_name,
             "WORKSPACE_DIRECTORY": self.workspace_directory_manager.workspace_path,
@@ -132,7 +126,7 @@ class WorkspaceDbManager:
             env_vars = {
                 "POSTGRES_DB": self.workspace_name,
                 "POSTGRES_USER": self.db_user,
-                "POSTGRES_PASSWORD": self.blitz_env_manager.ensure_global_env_var('PASSWORD', 'Enter your password: '),
+                "POSTGRES_PASSWORD": self.blitz_env_manager.set_global_env_var('PASSWORD', 'Enter your password: '),
                 "POSTGRES_INITDB_ARGS": "--auth-local=md5"
             }
             self.docker_manager.run_container(
@@ -153,7 +147,7 @@ class WorkspaceDbManager:
         try:
             time.sleep(1.5)
             connection = self.get_connection_details()
-            self.console_interface.spinner.text = (f"Trying to connect to SQLAlchemy engine with password ({self.blitz_env_manager.ensure_global_env_var('PASSWORD', 'Enter your password: ')}) at {self.get_sqlalchemy_uri()}")
+            self.console_interface.spinner.text = (f"Trying to connect to SQLAlchemy engine with password ({self.blitz_env_manager.set_global_env_var('PASSWORD', 'Enter your password: ')}) at {self.get_sqlalchemy_uri()}")
             engine = sqlalchemy.create_engine(self.get_sqlalchemy_uri())
             connection = engine.connect()
             connection.close()
@@ -165,13 +159,13 @@ class WorkspaceDbManager:
         return {
             "database": self.workspace_name,
             "user": self.db_user,
-            "password": self.blitz_env_manager.ensure_global_env_var('PASSWORD', 'Enter your password: '),
+            "password": self.blitz_env_manager.set_global_env_var('PASSWORD', 'Enter your password: '),
             "host": self.container_name,
             "port": self.db_port
         }
 
     def get_sqlalchemy_uri(self):
-        db_uri = f"postgresql+psycopg2://{self.db_user}:{self.blitz_env_manager.ensure_global_env_var('PASSWORD', 'Enter your password: ')}@{self.workspace_name}-postgres:{self.db_port}/{self.workspace_name}"
+        db_uri = f"postgresql+psycopg2://{self.db_user}:{self.blitz_env_manager.set_global_env_var('PASSWORD', 'Enter your password: ')}@{self.workspace_name}-postgres:{self.db_port}/{self.workspace_name}"
         return db_uri
 
     def setup_schema(self):

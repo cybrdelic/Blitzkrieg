@@ -2,8 +2,8 @@
 
 from prettytable import PrettyTable
 from blitzkrieg.alembic_manager import AlembicManager
-from blitzkrieg.blitz_env_manager import BlitzEnvManager
-from blitzkrieg.docker_manager import DockerManager
+from blitzkrieg.class_instances.docker_manager import docker_manager
+from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
 from blitzkrieg.file_manager import FileManager
 from blitzkrieg.file_writers.workspace_docker_compose_writer import WorkspaceDockerComposeWriter
 from blitzkrieg.file_writers.workspace_dockerfile_writer import WorkspaceDockerfileWriter
@@ -19,32 +19,28 @@ from prettytable import PrettyTable
 from blitzkrieg.workspace_management.templates.managers.workspace_docker_manager import WorkspaceDockerManager
 
 class WorkspaceManager:
-    def __init__(self, workspace_name, blitz_env_manager: BlitzEnvManager = None):
+    def __init__(self, workspace_name):
 
         self.blitz_env_manager = blitz_env_manager
         self.workspace_name: str = workspace_name
         self.console: ConsoleInterface = console
-        self.docker_manager: DockerManager = DockerManager(blitz_env_manager=self.blitz_env_manager)
+        self.docker_manager = docker_manager
         self.postgres_port: int = find_available_port(5432)
         self.pgadmin_port: int = find_available_port(5050)
         self.pgadmin_manager:PgAdminManager = PgAdminManager(
             postgres_port=self.postgres_port,
             pgadmin_port=self.pgadmin_port,
             workspace_name=self.workspace_name,
-            console=self.console,
-            blitz_env_manager=self.blitz_env_manager
+            console=self.console
         )
         self.file_manager: FileManager = FileManager()
         self.workspace_db_manager: WorkspaceDbManager = WorkspaceDbManager(
             port=self.postgres_port,
-            workspace_name=self.workspace_name,
-            console=self.console,
-            blitz_env_manager=self.blitz_env_manager
+            workspace_name=self.workspace_name
         )
         self.workspace_directory_manager: WorkspaceDirectoryManager = WorkspaceDirectoryManager(
             workspace_name=self.workspace_name,
-            console_interface=self.console,
-            blitz_env_manager=self.blitz_env_manager
+            console_interface=self.console
         )
         self.workspace_db_manager.set_workspace_directory_manager(self.workspace_directory_manager)
         self.docker_network_name: str = f"{self.workspace_name}-network"
@@ -60,7 +56,7 @@ class WorkspaceManager:
         self.workspace_dockerfile_writer = WorkspaceDockerfileWriter(workspace_path=self.workspace_directory_manager.workspace_path, console=self.console)
         self.workspace_docker_compose_writer = WorkspaceDockerComposeWriter(workspace_name=self.workspace_name, workspace_path=self.workspace_directory_manager.workspace_path, console=self.console, pgadmin_manager=self.pgadmin_manager, postgres_manager=self.workspace_db_manager)
         self.file_manager = FileManager()
-        self.workspace_docker_manager = WorkspaceDockerManager(blitz_env_manager=self.blitz_env_manager)
+        self.workspace_docker_manager = WorkspaceDockerManager()
 
     def blitz_init(self):
         blitzkrieg_initialization_process = self.console.create_workflow("Blitzkrieg Initialization")
@@ -77,12 +73,12 @@ class WorkspaceManager:
         self.console.add_action(
             phase=workspace_directory_initalization_group,
             name="Creating workspace .blitz.env file",
-            func=self.blitz_env_manager.create_workspace_env_file
+            func=self.blitz_env_manager.ensure_workspace_env_file
         )
         self.console.add_action(
             phase=workspace_directory_initalization_group,
             name="Creating global .blitz.env file",
-            func=self.blitz_env_manager.create_global_env_file
+            func=self.blitz_env_manager.ensure_global_env_file
         )
 
         self.console.add_action(
@@ -251,7 +247,7 @@ class WorkspaceManager:
             ]
 
             for var, val in workspace_env_vars:
-                self.blitz_env_manager.add_env_var_to_workspace_file(var, val)
+                self.blitz_env_manager.set_workspace_env_var(var, val)
         except Exception as e:
             self.console.handle_error(f"An error occurred while storing workspace credentials: {e}")
 

@@ -1,16 +1,50 @@
 [tool.poetry]
 name = "blitzkrieg"
-version = "0.3.0"
-description = ""
+version = "0.0.1"
+description = "A tool for rapid project setup and management"
 authors = ["cybrvybe <alexfigueroa.cybr@gmail.com>"]
 readme = "README.md"
+packages = [{include = "blitzkrieg"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
+colorama = "^0.4.6"
+click = "^8.1.7"
+questionary = "^2.0.1"
+pyfiglet = "^1.0.2"
+python-dotenv = "^1.0.1"
+alembic = "^1.13.1"
+SQLAlchemy = "^2.0.25"
+psycopg2-binary = "^2.9.9"
+loguru = "^0.7.2"
 
-[tool.poetry.scripts]
-blitz = "blitzkrieg.cli.main:main"
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+black = "^23.7.0"
+isort = "^5.12.0"
+flake8 = "^6.1.0"
+mypy = "^1.5.0"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+blitz = "blitzkrieg.cli.main:main"
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --cov=blitzkrieg --cov-report=term-missing"

@@ -2,17 +2,15 @@
 
 import os
 import subprocess
-from blitzkrieg.blitz_env_manager import BlitzEnvManager
-from blitzkrieg.docker_manager import DockerManager
+from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
-from blitzkrieg.ui_management.decorators import with_spinner
 
 class WorkspaceDirectoryManager:
-    def __init__(self, blitz_env_manager: BlitzEnvManager, workspace_name: str = None, console_interface: ConsoleInterface = None):
+    def __init__(self, workspace_name: str = None, console_interface: ConsoleInterface = None):
         self.workspace_name = workspace_name
         self.console = console_interface if console_interface else ConsoleInterface()
         self.workspace_path = os.path.join(os.getcwd(), self.workspace_name)
-        self.blitz_env_manager: BlitzEnvManager = blitz_env_manager
+        self.blitz_env_manager =  blitz_env_manager
 
     def teardown(self):
         return self.delete_workspace_directory()
@@ -27,8 +25,10 @@ class WorkspaceDirectoryManager:
     def create_dir(self, dir_path):
         os.makedirs(dir_path, exist_ok=True)
 
+
     def create_workspace_directory(self):
         try:
+            self.blitz_env_manager.set_workspace(self.workspace_name, self.workspace_path)
             os.makedirs(self.workspace_path, exist_ok=True)
             return self.console.handle_success(f"Created workspace directory at [white]{self.workspace_path}[/white]")
         except Exception as e:
@@ -36,9 +36,11 @@ class WorkspaceDirectoryManager:
 
     def save_workspace_directory_details_to_env_file(self):
         try:
-            self.blitz_env_manager.add_env_var_to_workspace_file('WORKSPACE_PATH', self.workspace_path)
-            self.blitz_env_manager.add_env_var_to_workspace_file('IS_WORKSPACE', True)
-            self.blitz_env_manager.add_env_var_to_workspace_file('WORKSPACE_NAME', self.workspace_name)
+            self.blitz_env_manager.set_workspace_env_var('WORKSPACE_PATH', self.workspace_path)
+            self.blitz_env_manager.set_workspace_env_var('IS_WORKSPACE', True)
+            self.blitz_env_manager.set_workspace_env_var('WORKSPACE_NAME', self.workspace_name)
+            self.blitz_env_manager.set_global_env_var("CURRENT_WORKSPACE", self.workspace_name)
+            self.blitz_env_manager.set_global_env_var("CURRENT_WORKSPACE_PATH", self.workspace_path)
             return self.console.handle_success(f"Saved workspace directory details to .blitz.env file")
         except Exception as e:
             return self.console.handle_error(f"Failed to save workspace directory details to .blitz.env file: {str(e)}")

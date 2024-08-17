@@ -1,0 +1,7 @@
+{
+    "project_name": "My Awesome CLI Tool",
+    "project_slug": "{{ cookiecutter.project_name.lower().replace(' ', '_') }}",
+    "project_description": "A description of your awesome CLI tool",
+    "author_name": "Your Name",
+    "author_email": "your.email@example.com"
+}
