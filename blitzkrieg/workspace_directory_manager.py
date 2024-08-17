@@ -3,9 +3,7 @@
 import os
 import subprocess
 from blitzkrieg.blitz_env_manager import BlitzEnvManager
-from blitzkrieg.docker_manager import DockerManager
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
-from blitzkrieg.ui_management.decorators import with_spinner
 
 class WorkspaceDirectoryManager:
     def __init__(self, blitz_env_manager: BlitzEnvManager, workspace_name: str = None, console_interface: ConsoleInterface = None):
@@ -26,6 +24,7 @@ class WorkspaceDirectoryManager:
 
     def create_dir(self, dir_path):
         os.makedirs(dir_path, exist_ok=True)
+
 
     def create_workspace_directory(self):
         try:
