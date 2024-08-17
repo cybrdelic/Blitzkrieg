@@ -1,10 +1,11 @@
-from blitzkrieg.blitz_env_manager import BlitzEnvManager
+
+from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
 from blitzkrieg.cli.cli_interface import handle_create_project_command, handle_delete_project_command
 import click
 from packaging import version as packaging_version
 import subprocess
+from blitzkrieg.cookie_cutter_manager import CookieCutterManager
 from blitzkrieg.ui_management.console_instance import console
-from blitzkrieg.workspace_directory_manager import WorkspaceDirectoryManager
 from blitzkrieg.workspace_manager import WorkspaceManager
 import os
 
@@ -15,20 +16,16 @@ def main():
 @click.argument("workspace_name")
 def create_workspace(workspace_name):
 
-    blitz_env_manager = BlitzEnvManager(workspace_name=workspace_name)
 
     WorkspaceManager(
-        workspace_name=workspace_name,
-        blitz_env_manager=blitz_env_manager,
+        workspace_name=workspace_name
     ).blitz_init()
 
 @main.command('delete-workspace')
 @click.argument("workspace_name")
 def delete_workspace(workspace_name):
-    blitz_env_manager = BlitzEnvManager(workspace_name=workspace_name)
     WorkspaceManager(
-        workspace_name=workspace_name,
-        blitz_env_manager=blitz_env_manager
+        workspace_name=workspace_name
     ).teardown_workspace()
 
 # @main.command("show")
@@ -66,7 +63,6 @@ def setup_test():
 @click.option('--version', prompt='New version number', help='The new version number for the release')
 def release(version):
     """Set up Poetry and release a new version of Blitzkrieg to PyPI"""
-    blitz_env_manager = BlitzEnvManager()
 
     try:
         # Validate the version number
@@ -150,50 +146,21 @@ def find_path_difference(path1, path2):
 def create_project(type, name, description):
     """Create a new project within the current workspace."""
     try:
-        # First, try to get the workspace name from the environment
-        blitz_env_manager = BlitzEnvManager()
-        workspace_name = blitz_env_manager.get_global_var('CURRENT_WORKSPACE')
-
-        if not workspace_name:
-            click.echo("No current workspace found. Please create or select a workspace first.")
-            return
-
-        # Now initialize BlitzEnvManager with the workspace name
-        blitz_env_manager = BlitzEnvManager(workspace_name)
-
-        if not blitz_env_manager.workspace_env_file_exists():
-            click.echo(f"Workspace environment file not found for '{workspace_name}'. Please ensure the workspace exists.")
-            return
-
-        # Get the workspace directory
-        workspace_dir = blitz_env_manager.get_workspace_env_var('WORKSPACE_DIRECTORY')
-        if not workspace_dir:
-            click.echo("Workspace directory not found. Please ensure the workspace is set up correctly.")
-            return
-
-        # Path to your custom Cookiecutter template
-        template_path = os.path.join(os.path.dirname(__file__), '..', 'templates', f'poetry-{type}-template')
-
-        if not os.path.exists(template_path):
-            click.echo(f"Template for {type} projects not found. Please ensure the template exists.")
-            return
-
-        # Use Cookiecutter to create the project
-        cookiecutter(
-            template_path,
-            no_input=True,
-            extra_context={
-                'project_name': name,
-                'project_slug': name.lower().replace(' ', '_'),
-                'project_description': description,
-                'author_name': blitz_env_manager.get_global_var('AUTHOR_NAME') or 'Your Name',
-                'author_email': blitz_env_manager.get_global_var('AUTHOR_EMAIL') or 'your.email@example.com',
-            },
-            output_dir=workspace_dir
+        console.handle_info(f"starting the create_project command. about to initialize the CookieCutterManager")
+        cookie_cutter_manager = CookieCutterManager()
+        console.handle_info(f"CookieCutterManager initialized successfully")
+        console.handle_info(f"about to get the template path for the project type: {type}")
+        template_path = cookie_cutter_manager.get_template_path(type)
+        console.handle_info(f"Template path retrieved successfully: {template_path}")
+        console.handle_info(f"about to generate the project")
+        cookie_cutter_manager.generate_project(
+            project_name=name,
+            template_path=template_path,
+            description=description
         )
+        console.handle_success(f"Successfully created project: {name}")
 
-        click.echo(f"Successfully created {type} project '{name}' in workspace '{workspace_name}'")
-        click.echo(f"Project path: {os.path.join(workspace_dir, name.lower().replace(' ', '_'))}")
+
 
     except Exception as e:
         click.echo(f"An error occurred while creating the project: {str(e)}")

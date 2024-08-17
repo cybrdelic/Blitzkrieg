@@ -4,7 +4,7 @@ from typing import Optional
 from blitzkrieg.ui_management.console_instance import console
 
 class BlitzEnvManager:
-    def __init__(self, workspace_name: str = None ):
+    def __init__(self):
         self.console = console
         self.file_name = '.blitz.env'
         self.global_env_file_path = os.path.join(os.path.expanduser("~"), ".blitzkrieg", self.file_name)
@@ -106,37 +106,17 @@ class BlitzEnvManager:
             return os.path.basename(workspace_root)
         return None
 
-    def create_workspace(self, workspace_name: str):
-        self.set_workspace(workspace_name)
-        os.makedirs(self.workspace_path, exist_ok=True)
-        self.ensure_workspace_env_file()
-        self.set_workspace_env_var("WORKSPACE_NAME", workspace_name)
-        self.console.handle_info(f"Created workspace: {workspace_name}")
+    def get_active_workspace_dir(self):
+        console.handle_info(f"About to get current_workspace dir...")
+        workspace_name = self.get_global_env_var('CURRENT_WORKSPACE')
+        console.handle_info(f"Current workspace name: {workspace_name}")
+        if not workspace_name:
+            self.console.handle_error("No active workspace found. Use select_workspace() first.")
+            return None
+        console.handle_info(f"About to get ensure workspace_env_file for {workspace_name}")
 
-    def load_json_config(self, file_path: str) -> dict:
-        try:
-            with open(file_path, 'r') as f:
-                return json.load(f)
-        except FileNotFoundError:
-            self.console.handle_error(f"Config file not found: {file_path}")
-            return {}
-        except json.JSONDecodeError:
-            self.console.handle_error(f"Invalid JSON in config file: {file_path}")
-            return {}
-
-    def save_json_config(self, file_path: str, data: dict):
-        try:
-            with open(file_path, 'w') as f:
-                json.dump(data, f, indent=2)
-            self.console.handle_info(f"Config saved to {file_path}")
-        except Exception as e:
-            self.console.handle_error(f"Failed to save config to {file_path}: {str(e)}")
-
-    def get_workspace_docker_network(self) -> str:
-        return f"{self.workspace_name.lower()}-network"
-
-    def get_workspace_postgres_container(self) -> str:
-        return f"{self.workspace_name.lower()}-postgres"
-
-    def get_workspace_pgadmin_container(self) -> str:
-        return f"{self.workspace_name.lower()}-pgadmin"
+        workspace_dir = self.get_global_env_var('CURRENT_WORKSPACE_PATH')
+        if not workspace_dir:
+            self.console.handle_error("Workspace directory not found. Please ensure the workspace is set up correctly, and that the workspace .blitz.env file has a WORKSPACE_DIRECTORY field.")
+            return None
+        return workspace_dir

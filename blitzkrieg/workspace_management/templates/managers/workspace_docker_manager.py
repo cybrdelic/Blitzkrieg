@@ -1,12 +1,13 @@
-from blitzkrieg.blitz_env_manager import BlitzEnvManager
-from blitzkrieg.docker_manager import DockerManager
+
+from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
+from blitzkrieg.class_instances.docker_manager import docker_manager
 from blitzkrieg.ui_management.console_instance import console
 import subprocess
 
 class WorkspaceDockerManager:
-    def __init__(self, blitz_env_manager: BlitzEnvManager):
-        self.blitz_env_manager: BlitzEnvManager = blitz_env_manager
-        self.docker_manager: DockerManager = DockerManager(blitz_env_manager=blitz_env_manager)
+    def __init__(self):
+        self.blitz_env_manager =  blitz_env_manager
+        self.docker_manager = docker_manager
         self.console = console
         self.workspace_path = None
         self.workspace_name = None

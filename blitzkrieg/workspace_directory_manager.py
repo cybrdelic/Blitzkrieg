@@ -2,15 +2,15 @@
 
 import os
 import subprocess
-from blitzkrieg.blitz_env_manager import BlitzEnvManager
+from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
 
 class WorkspaceDirectoryManager:
-    def __init__(self, blitz_env_manager: BlitzEnvManager, workspace_name: str = None, console_interface: ConsoleInterface = None):
+    def __init__(self, workspace_name: str = None, console_interface: ConsoleInterface = None):
         self.workspace_name = workspace_name
         self.console = console_interface if console_interface else ConsoleInterface()
         self.workspace_path = os.path.join(os.getcwd(), self.workspace_name)
-        self.blitz_env_manager: BlitzEnvManager = blitz_env_manager
+        self.blitz_env_manager =  blitz_env_manager
 
     def teardown(self):
         return self.delete_workspace_directory()

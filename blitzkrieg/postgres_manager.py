@@ -1,18 +1,14 @@
 
 from blitzkrieg.alembic_manager import AlembicManager
-from blitzkrieg.blitz_env_manager import BlitzEnvManager
+from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
+from blitzkrieg.class_instances.docker_manager import docker_manager
 from blitzkrieg.db.models.base import Base
 from blitzkrieg.db.models.environment_variable import EnvironmentVariable
 from blitzkrieg.db.models.workspace import Workspace
-from blitzkrieg.docker_manager import DockerManager
 from blitzkrieg.pgadmin_manager import PgAdminManager
-from blitzkrieg.utils.port_allocation import find_available_port
-import json
 from blitzkrieg.utils.run_command import run_command
 import time
-from docker.errors import NotFound
-from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
-from blitzkrieg.ui_management.decorators import with_spinner
+from blitzkrieg.ui_management.console_instance import console
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
 import uuid
@@ -25,19 +21,17 @@ class WorkspaceDbManager:
     def __init__(
             self,
             port,
-            blitz_env_manager: BlitzEnvManager,
             workspace_name: str = None,
-            console: ConsoleInterface = None
     ):
         self.workspace_name = workspace_name
-        self.blitz_env_manager: BlitzEnvManager = blitz_env_manager
+        self.blitz_env_manager = blitz_env_manager
         self.db_user = f"{self.workspace_name}-db-user"
         self.db_port = port
         self.network_name = f"{self.workspace_name}-network"
         self.container_name = f"{self.workspace_name}-postgres"
         self.image_name = "postgres:latest"
-        self.console_interface = console if console else ConsoleInterface()
-        self.docker_manager = DockerManager(blitz_env_manager=self.blitz_env_manager)
+        self.console_interface = console
+        self.docker_manager = docker_manager
         self.pgadmin_manager: PgAdminManager = None
         self.workspace_directory_manager: WorkspaceDirectoryManager = None
         self.alembic_manager: AlembicManager = None

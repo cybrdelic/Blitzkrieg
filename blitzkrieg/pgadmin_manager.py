@@ -3,8 +3,7 @@
 import json
 import os
 import tarfile
-from blitzkrieg.blitz_env_manager import BlitzEnvManager
-from blitzkrieg.docker_manager import DockerManager
+from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
 from blitzkrieg.utils.port_allocation import find_available_port
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
 
@@ -12,15 +11,11 @@ class PgAdminManager:
     def __init__(
             self,
             postgres_port,
-            blitz_env_manager: BlitzEnvManager,
             pgadmin_port=None,
             workspace_name: str = None,
             console: ConsoleInterface = None,
     ):
-        self.blitz_env_manager: BlitzEnvManager = blitz_env_manager
-        self.docker_manager = DockerManager(
-            blitz_env_manager=blitz_env_manager
-        )
+        self.blitz_env_manager = blitz_env_manager
         self.workspace_name = workspace_name
         self.network_name = f"{self.workspace_name}-network"
         self.container_name = f"{self.workspace_name}-pgadmin"
