@@ -16,3 +16,7 @@ daily_reports/
 .docs/issues/
 .docs/*.md
 issues/
+alexfigueroa/
+alembic.ini
+poetry.lock
+*-plan.md
