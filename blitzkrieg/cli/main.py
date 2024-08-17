@@ -1,12 +1,16 @@
 
 from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
-from blitzkrieg.cli.cli_interface import handle_create_project_command, handle_delete_project_command
+from blitzkrieg.utils.contextualization_utils import extract_function_and_references
+from blitzkrieg.utils.git_utils import authenticate_github_cli, commit_staged_files, create_git_tag, stage_files_for_commit, sync_local_changes_to_remote_repository
+from blitzkrieg.utils.poetry_utils import build_project_package, initialize_poetry, install_project_dependencies, update_project_version
+from blitzkrieg.utils.validation_utils import validate_package_installation, validate_version_number
 import click
 from packaging import version as packaging_version
 import subprocess
 from blitzkrieg.cookie_cutter_manager import CookieCutterManager
 from blitzkrieg.ui_management.console_instance import console
 from blitzkrieg.workspace_manager import WorkspaceManager
+from blitzkrieg.rust_function_contextualizer.rust_function_extractor.python.rust_function_extractor import extract_function_and_references as rust_extract
 import os
 
 @click.group()
@@ -59,58 +63,48 @@ def setup_test():
 # @main.command('create')
 # def create_project():
 #     handle_create_project_command()import os
+
+@main.command('contextualize')
+def contextualize():
+    rust_extract('release')
 @main.command('release')
 @click.option('--version', prompt='New version number', help='The new version number for the release')
 def release(version):
     """Set up Poetry and release a new version of Blitzkrieg to PyPI"""
 
-    try:
-        # Validate the version number
-        packaging_version.parse(version)
-    except packaging_version.InvalidVersion:
-        click.echo(f"Invalid version number: {version}")
-        return
+    validate_version_number(version)
 
     try:
-        # Check if Poetry is installed
-        try:
-            subprocess.run(["poetry", "--version"], check=True)
-        except FileNotFoundError:
-            click.echo("Poetry is not installed. Installing Poetry...")
-            subprocess.run(["pip", "install", "poetry"], check=True)
+        poetry_installation_is_successful = validate_package_installation('poetry')
 
-        # Initialize Poetry if pyproject.toml doesn't exist
-        if not os.path.exists('pyproject.toml'):
-            click.echo("Initializing Poetry...")
-            subprocess.run(["poetry", "init", "--no-interaction"], check=True)
+        if not poetry_installation_is_successful:
+            console.handle_error("Poetry installation failed. Check the validate_poetry_installation() function.")
 
-        # Update the version in pyproject.toml
-        subprocess.run(["poetry", "version", version], check=True)
+        initialize_poetry()
+        update_project_version(version)
+        install_project_dependencies()
+        build_project_package()
 
-        # Install dependencies
-        subprocess.run(["poetry", "install"], check=True)
-
-        # Build the package
-        subprocess.run(["poetry", "build"], check=True)
 
         # Check for PyPI credentials
         pypi_username = "__token__"
-        pypi_api_key = blitz_env_manager.get_global_var('PYPI_API_KEY')
+        pypi_api_key = blitz_env_manager.get_global_env_var('PYPI_API_KEY')
         if not pypi_api_key:
-            click.echo("PYPI_API_KEY is not set in the global .blitz.env file. Please set it and try again.")
-            return
+            blitz_env_manager.set_global_env_var('PYPI_API_KEY', click.prompt("Enter your PyPI API key"))
+            pypi_api_key = blitz_env_manager.get_global_env_var('PYPI_API_KEY')
 
         # Publish to PyPI
         subprocess.run(["poetry", "publish", "--username", pypi_username, "--password", pypi_api_key], check=True)
 
         # Create a git tag for the new version
-        subprocess.run(["git", "add", "pyproject.toml"], check=True)
-        subprocess.run(["git", "commit", "-m", f"Bump version to {version}"], check=True)
-        subprocess.run(["git", "tag", f"v{version}"], check=True)
-
+        stage_files_for_commit(['pyproject.toml'])
+        commit_message = f"Bump version to {version}"
+        commit_staged_files(commit_message)
+        tag_name = f"v{version}"
+        create_git_tag(tag_name)
         # Push the new tag and commit to the remote repository using GitHub CLI
-        subprocess.run(["gh", "auth", "status"], check=True)  # Ensure you're authenticated
-        subprocess.run(["gh", "repo", "sync"], check=True)  # Sync changes
+        authenticate_github_cli()
+        sync_local_changes_to_remote_repository()
 
         click.echo(f"Successfully set up Poetry and released Blitzkrieg version {version} to PyPI!")
     except subprocess.CalledProcessError as e:
