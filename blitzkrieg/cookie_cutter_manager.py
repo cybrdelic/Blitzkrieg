@@ -12,6 +12,7 @@ class CookieCutterManager:
         try:
             console.handle_info(f"Inside of generate_project... project_name: {project_name}, template_path: {template_path}, description: {description}. About to fetch active workspace dir.")
             workspace_dir = self.blitz_env_manager.get_active_workspace_dir()
+            workspace_projects_dir = os.path.join(workspace_dir, 'projects')
             console.handle_info(f"Active workspace dir: {workspace_dir}")
             console.handle_info(f"About to generate project using cookiecutter... ")
             cookiecutter(
@@ -24,7 +25,7 @@ class CookieCutterManager:
                     'author_name': self.blitz_env_manager.get_global_env_var('NAME') or 'Your Name',
                     'author_email': self.blitz_env_manager.get_global_env_var('EMAIL') or 'your.email@example.com',
                 },
-                output_dir=workspace_dir
+                output_dir=workspace_projects_dir
             )
             console.handle_success(f"Generated project {project_name} at {workspace_dir} with the slug {project_name.lower().replace(' ', '_')}")
         except Exception as e:
