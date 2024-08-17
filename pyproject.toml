@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "blitzkrieg"
-version = "0.3.3"
+version = "0.3.4"
 description = "A tool for rapid project setup and management"
 authors = ["cybrvybe <alexfigueroa.cybr@gmail.com>"]
 readme = "README.md"
