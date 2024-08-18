@@ -1,16 +1,15 @@
 
 from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
-from blitzkrieg.utils.contextualization_utils import extract_function_and_references
+
 from blitzkrieg.utils.git_utils import authenticate_github_cli, commit_staged_files, create_git_tag, stage_files_for_commit, sync_local_changes_to_remote_repository
 from blitzkrieg.utils.poetry_utils import build_project_package, initialize_poetry, install_project_dependencies, update_project_version
 from blitzkrieg.utils.validation_utils import validate_package_installation, validate_version_number
 import click
-from packaging import version as packaging_version
 import subprocess
 from blitzkrieg.cookie_cutter_manager import CookieCutterManager
 from blitzkrieg.ui_management.console_instance import console
 from blitzkrieg.workspace_manager import WorkspaceManager
-from blitzkrieg.rust_function_contextualizer.rust_function_extractor.python.rust_function_extractor import extract_function_and_references as rust_extract
+import rust_function_extractor as rust_extract
 import os
 
 @click.group()
@@ -66,7 +65,12 @@ def setup_test():
 
 @main.command('contextualize')
 def contextualize():
-    rust_extract('release')
+    try:
+        console.handle_wait("Starting the contextualization process")
+        rust_extract.extract_function_and_references('release')
+
+    except Exception as e:
+        console.handle_error(f"An error occurred during contextualization: {str(e)}")
 @main.command('release')
 @click.option('--version', prompt='New version number', help='The new version number for the release')
 def release(version):
