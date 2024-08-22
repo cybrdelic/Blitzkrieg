@@ -1,3 +1,4 @@
+use colored::*;
 use pyo3::prelude::*;
 use rayon::prelude::*;
 use regex::Regex;
@@ -415,6 +416,11 @@ fn process_file(
     let parser = get_parser_for_language(&language);
     let file_elements = parser.parse_file(&content, path.to_str().unwrap_or_default());
 
+    // Add all elements to the HashMap
+    for element in &file_elements {
+        all_elements.insert(element.name.clone(), element.clone());
+    }
+
     // Filter elements that match the keyword
     let matched_elements: Vec<CodeElement> = file_elements
         .into_iter()
@@ -451,79 +457,138 @@ fn trace_logic_chains(
         element: &CodeElement,
         all_elements: &HashMap<String, CodeElement>,
         traced: &mut HashSet<String>,
+        depth: usize,
     ) -> CodeElement {
+        if depth > 10 {
+            println!(
+                "{}: {} (depth limit reached)",
+                "Stopping trace".bright_yellow(),
+                element.name
+            );
+            return element.clone();
+        }
+
+        println!(
+            "{} {}: {}",
+            "Tracing".bright_blue(),
+            "element".bright_cyan(),
+            element.name.bright_yellow()
+        );
         let mut traced_element = element.clone();
         traced_element.nested_elements.clear();
 
-        for nested in &element.nested_elements {
-            if !traced.contains(&nested.name) {
-                traced.insert(nested.name.clone());
-                if let Some(full_nested) = all_elements.get(&nested.name) {
+        let references = element
+            .content
+            .split_whitespace()
+            .filter(|&word| all_elements.contains_key(word))
+            .collect::<HashSet<_>>();
+
+        println!(
+            "  Found {} potential references",
+            references.len().to_string().bright_cyan()
+        );
+
+        for reference in references {
+            if !traced.contains(reference) {
+                traced.insert(reference.to_string());
+                if let Some(referenced_element) = all_elements.get(reference) {
+                    println!(
+                        "    {}: {}",
+                        "Following reference".bright_green(),
+                        reference.bright_yellow()
+                    );
                     traced_element.nested_elements.push(trace_recursive(
-                        full_nested,
+                        referenced_element,
                         all_elements,
                         traced,
+                        depth + 1,
                     ));
+                } else {
+                    println!("    {}: {}", "Reference not found".bright_red(), reference);
                 }
             } else {
-                // If we've already traced this element, add a placeholder to avoid circular references
-                traced_element.nested_elements.push(CodeElement {
-                    name: nested.name.clone(),
-                    element_type: "reference".to_string(),
-                    content: "Circular reference".to_string(),
-                    file_path: nested.file_path.clone(),
-                    language: nested.language.clone(),
-                    start_line: nested.start_line,
-                    end_line: nested.end_line,
-                    imports: Vec::new(),
-                    nested_elements: Vec::new(),
-                });
+                println!(
+                    "    {}: {}",
+                    "Circular reference detected".bright_yellow(),
+                    reference
+                );
             }
         }
 
         traced_element
     }
 
+    println!(
+        "{} {}",
+        "Starting trace for".bright_blue(),
+        keyword.bright_yellow()
+    );
     all_elements.get(keyword).map(|element| {
         let mut traced = HashSet::new();
         traced.insert(keyword.to_string());
-        trace_recursive(element, all_elements, &mut traced)
+        trace_recursive(element, all_elements, &mut traced, 0)
     })
 }
-
 fn format_output(element: &CodeElement, depth: usize) -> String {
     let indent = "  ".repeat(depth);
-    let mut output = format!("{}{}:\n", indent, element.name);
-    output += &format!("{}  Type: {}\n", indent, element.element_type);
-    output += &format!("{}  File: {}\n", indent, element.file_path);
-    output += &format!("{}  Language: {}\n", indent, element.language);
+    let mut output = format!(
+        "{}{}: {}\n",
+        indent,
+        "Element".bright_cyan(),
+        element.name.bright_yellow()
+    );
     output += &format!(
-        "{}  Lines: {}-{}\n",
-        indent, element.start_line, element.end_line
+        "{}  {}: {}\n",
+        indent,
+        "Type".bright_blue(),
+        element.element_type.bright_green()
+    );
+    output += &format!(
+        "{}  {}: {}\n",
+        indent,
+        "File".bright_blue(),
+        element.file_path.bright_green()
+    );
+    output += &format!(
+        "{}  {}: {}\n",
+        indent,
+        "Language".bright_blue(),
+        element.language.bright_green()
+    );
+    output += &format!(
+        "{}  {}: {}-{}\n",
+        indent,
+        "Lines".bright_blue(),
+        element.start_line.to_string().bright_green(),
+        element.end_line.to_string().bright_green()
     );
     if !element.imports.is_empty() {
-        output += &format!("{}  Imports:\n", indent);
+        output += &format!("{}  {}: \n", indent, "Imports".bright_blue());
         for import in &element.imports {
-            output += &format!("{}    {}\n", indent, import);
+            output += &format!("{}    {}\n", indent, import.bright_green());
         }
     }
-    output += &format!("{}  Content:\n", indent);
+    output += &format!("{}  {}: \n", indent, "Content".bright_blue());
     for line in element.content.lines() {
         output += &format!("{}    {}\n", indent, line);
     }
     if !element.nested_elements.is_empty() {
-        output += &format!("{}  Nested Elements:\n", indent);
+        output += &format!("{}  {}: \n", indent, "Nested Elements".bright_blue());
         for nested in &element.nested_elements {
             if depth < 2 {
-                // Limit the depth of nested elements to avoid overwhelming output
                 output += &format_output(nested, depth + 1);
             } else {
-                output += &format!("{}    {} (nested, content omitted)\n", indent, nested.name);
+                output += &format!(
+                    "{}    {} (nested, content omitted)\n",
+                    indent,
+                    nested.name.bright_yellow()
+                );
             }
         }
     }
     output
 }
+
 #[pyfunction]
 fn extract_code_context(keyword: String) -> PyResult<String> {
     let start = Instant::now();
@@ -531,9 +596,11 @@ fn extract_code_context(keyword: String) -> PyResult<String> {
 
     let output = Arc::new(Mutex::new(String::new()));
 
+    println!("{}", "Starting code context extraction...".bright_green());
     println!(
         "Searching for '{}' in directory: {:?}\n",
-        keyword, current_dir
+        keyword.bright_yellow(),
+        current_dir.to_string_lossy().bright_blue()
     );
     {
         let mut output = output.lock().unwrap();
@@ -545,7 +612,10 @@ fn extract_code_context(keyword: String) -> PyResult<String> {
 
     let project_files = get_project_files(&current_dir);
     let total_files = project_files.len();
-    println!("Found {} potentially relevant files\n", total_files);
+    println!(
+        "Found {} potentially relevant files\n",
+        total_files.to_string().bright_cyan()
+    );
     {
         let mut output = output.lock().unwrap();
         output.push_str(&format!(
@@ -562,17 +632,27 @@ fn extract_code_context(keyword: String) -> PyResult<String> {
         match process_file(path, &mut elements, &keyword, &files_processed, total_files) {
             Ok(file_elements) => {
                 if !file_elements.is_empty() {
-                    println!("Found relevant elements in file: {:?}", path);
+                    println!(
+                        "{}: {:?}",
+                        "Found relevant elements in file".bright_green(),
+                        path
+                    );
                     let mut output = output.lock().unwrap();
                     output.push_str(&format!("Found relevant elements in file: {:?}\n", path));
                 }
             }
             Err(e) => {
-                eprintln!("Error processing file {:?}: {}", path, e);
+                eprintln!(
+                    "{}: {:?} - {}",
+                    "Error processing file".bright_red(),
+                    path,
+                    e
+                );
             }
         }
     });
 
+    println!("\n{}", "Starting logic chain tracing...".bright_green());
     let traced_element = {
         let elements = all_elements.lock().unwrap();
         trace_logic_chains(&keyword, &elements)
@@ -586,14 +666,26 @@ fn extract_code_context(keyword: String) -> PyResult<String> {
     }
 
     if let Some(element) = traced_element {
-        println!("Found and traced element: {}", keyword);
+        println!(
+            "{}: {}",
+            "Found and traced element".bright_green(),
+            keyword.bright_yellow()
+        );
         let formatted_output = format_output(&element, 0);
-        println!("Formatted output:\n{}", formatted_output);
+        println!(
+            "{}\n{}",
+            "Formatted output:".bright_cyan(),
+            formatted_output
+        );
         let mut output = output.lock().unwrap();
         output.push_str(&format!("Found and traced element: {}\n\n", keyword));
         output.push_str(&formatted_output);
     } else {
-        println!("Element '{}' not found in the codebase.", keyword);
+        println!(
+            "{}: {}",
+            "Element not found".bright_red(),
+            keyword.bright_yellow()
+        );
         let mut output = output.lock().unwrap();
         output.push_str(&format!(
             "Element '{}' not found in the codebase.\n",
@@ -602,7 +694,11 @@ fn extract_code_context(keyword: String) -> PyResult<String> {
     }
 
     let final_output = output.lock().unwrap().clone();
-    println!("Final output length: {} characters", final_output.len());
+    println!(
+        "{}: {} characters",
+        "Final output length".bright_cyan(),
+        final_output.len().to_string().bright_yellow()
+    );
     Ok(final_output)
 }
 
