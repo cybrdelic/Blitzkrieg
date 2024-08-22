@@ -1,3 +1,3 @@
-from .rust_function_extractor import extract_function_and_references
+from .rust_code_context import extract_code_context
 
-__all__ = ['extract_function_and_references']
+__all__ = ['extract_code_context']
