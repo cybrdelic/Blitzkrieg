@@ -477,11 +477,16 @@ fn trace_logic_chains(
         let mut traced_element = element.clone();
         traced_element.nested_elements.clear();
 
-        let references = element
-            .content
-            .split_whitespace()
-            .filter(|&word| all_elements.contains_key(word))
-            .collect::<HashSet<_>>();
+        // Use a regex to find function calls and method invocations
+        let call_regex = Regex::new(r"\b(\w+)\s*\(|\b(\w+)\.\s*(\w+)\s*\(").unwrap();
+        let references: HashSet<String> = call_regex
+            .captures_iter(&element.content)
+            .filter_map(|cap| {
+                cap.get(1)
+                    .or_else(|| cap.get(3))
+                    .map(|m| m.as_str().to_string())
+            })
+            .collect();
 
         println!(
             "  Found {} potential references",
@@ -489,9 +494,9 @@ fn trace_logic_chains(
         );
 
         for reference in references {
-            if !traced.contains(reference) {
-                traced.insert(reference.to_string());
-                if let Some(referenced_element) = all_elements.get(reference) {
+            if !traced.contains(&reference) {
+                traced.insert(reference.clone());
+                if let Some(referenced_element) = all_elements.get(&reference) {
                     println!(
                         "    {}: {}",
                         "Following reference".bright_green(),
@@ -529,6 +534,7 @@ fn trace_logic_chains(
         trace_recursive(element, all_elements, &mut traced, 0)
     })
 }
+
 fn format_output(element: &CodeElement, depth: usize) -> String {
     let indent = "  ".repeat(depth);
     let mut output = format!(
