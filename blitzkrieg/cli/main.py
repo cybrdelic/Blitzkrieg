@@ -169,7 +169,7 @@ def create_project(type, name, description):
         create_github_repo(project)
         save_project(project, session)
         console.handle_success(f"Successfully created a GitHub repository for the project: {name}")
-        push_project_to_repo(name)
+        push_project_to_repo(project)
 
 
 
