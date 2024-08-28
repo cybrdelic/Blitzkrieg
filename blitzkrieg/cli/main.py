@@ -1,8 +1,10 @@
 
 from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
 
+from blitzkrieg.db.models.project import Project
+from blitzkrieg.project_management.db.connection import get_db_session, get_docker_db_session, save_project
 from blitzkrieg.utils.git_utils import authenticate_github_cli, commit_staged_files, create_git_tag, stage_files_for_commit, sync_local_changes_to_remote_repository
-from blitzkrieg.utils.github_utils import create_github_repo
+from blitzkrieg.utils.github_utils import create_github_repo, push_project_to_repo
 from blitzkrieg.utils.poetry_utils import build_project_package, initialize_poetry, install_project_dependencies, update_project_version
 from blitzkrieg.utils.validation_utils import validate_package_installation, validate_version_number
 import click
@@ -145,6 +147,7 @@ def find_path_difference(path1, path2):
 def create_project(type, name, description):
     """Create a new project within the current workspace."""
     try:
+        session = get_docker_db_session()
         console.handle_info(f"starting the create_project command. about to initialize the CookieCutterManager")
         cookie_cutter_manager = CookieCutterManager()
         console.handle_info(f"CookieCutterManager initialized successfully")
@@ -157,10 +160,16 @@ def create_project(type, name, description):
             template_path=template_path,
             description=description
         )
+        project = Project(
+            name=name,
+            description=description
+        )
         console.handle_success(f"Successfully created project: {name}")
         console.handle_info(f"About to create a github repo")
-        create_github_repo(name, description)
+        create_github_repo(project)
+        save_project(project, session)
         console.handle_success(f"Successfully created a GitHub repository for the project: {name}")
+        push_project_to_repo(name)
 
 
 
