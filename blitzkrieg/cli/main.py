@@ -2,6 +2,7 @@
 from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
 
 from blitzkrieg.utils.git_utils import authenticate_github_cli, commit_staged_files, create_git_tag, stage_files_for_commit, sync_local_changes_to_remote_repository
+from blitzkrieg.utils.github_utils import create_github_repo
 from blitzkrieg.utils.poetry_utils import build_project_package, initialize_poetry, install_project_dependencies, update_project_version
 from blitzkrieg.utils.validation_utils import validate_package_installation, validate_version_number
 import click
@@ -9,7 +10,7 @@ import subprocess
 from blitzkrieg.cookie_cutter_manager import CookieCutterManager
 from blitzkrieg.ui_management.console_instance import console
 from blitzkrieg.workspace_manager import WorkspaceManager
-import rust_function_extractor as rust_extract
+import rust_codetextualizer
 import os
 
 @click.group()
@@ -67,7 +68,7 @@ def setup_test():
 def contextualize():
     try:
         console.handle_wait("Starting the contextualization process")
-        rust_extract.extract_function_and_references('release')
+        rust_codetextualizer.extract_code_context('blitz_init')
 
     except Exception as e:
         console.handle_error(f"An error occurred during contextualization: {str(e)}")
@@ -157,6 +158,10 @@ def create_project(type, name, description):
             description=description
         )
         console.handle_success(f"Successfully created project: {name}")
+        console.handle_info(f"About to create a github repo")
+        create_github_repo(name, description)
+        console.handle_success(f"Successfully created a GitHub repository for the project: {name}")
+
 
 
 
