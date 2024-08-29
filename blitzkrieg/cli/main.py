@@ -6,7 +6,7 @@ from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
 from blitzkrieg.db.models.project import Project
 from blitzkrieg.project_management.db.connection import get_db_session, get_docker_db_session, save_project
 from blitzkrieg.utils.git_utils import authenticate_github_cli, commit_staged_files, create_git_tag, stage_files_for_commit, sync_local_changes_to_remote_repository
-from blitzkrieg.utils.github_utils import create_github_repo, push_project_to_repo
+from blitzkrieg.utils.github_utils import clone_github_repo, create_github_repo, get_github_repo_details, push_project_to_repo
 from blitzkrieg.utils.poetry_utils import build_project_package, initialize_poetry, install_project_dependencies, update_project_version
 from blitzkrieg.utils.validation_utils import validate_package_installation, validate_version_number
 import click
@@ -156,6 +156,7 @@ def create_project():
     project_name = questionary.text("Enter the project name:").ask()
     short_description = questionary.text("Enter a short description for the project (roughly 3-5 words):").ask()
     description = questionary.text("Enter a detailed description for the project:").ask()
+    type = type.lower().replace(' ', '_')
 
     project = Project(
         name=project_name,
@@ -185,6 +186,27 @@ def create_project():
         push_project_to_repo(project)
     except Exception as e:
         console.handle_error(f"An error occurred while creating the project: {str(e)}")
+
+@main.command('track-project')
+def track_project():
+    """Track a project within the current workspace."""
+    project_name = questionary.text("Enter the project name:").ask()
+    project_github_repo_details = get_github_repo_details(project_name)
+    project = Project(
+        name=project_name,
+        github_repo=project_github_repo_details['url'],
+        description=project_github_repo_details['description']
+
+    )
+
+    try:
+        session = get_docker_db_session()
+        save_project(project, session)
+        console.handle_success(f"Successfully tracked project: {project_name}")
+    except Exception as e:
+        console.handle_error(f"An error occurred while tracking the project: {str(e)}")
+
+    clone_github_repo(project_github_repo_details['url'])
 
 if __name__ == "__main__":
     click.echo("Starting the application...")
