@@ -1,4 +1,6 @@
 
+from prompt_toolkit import prompt
+import questionary
 from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
 
 from blitzkrieg.db.models.project import Project
@@ -14,6 +16,7 @@ from blitzkrieg.ui_management.console_instance import console
 from blitzkrieg.workspace_manager import WorkspaceManager
 import rust_codetextualizer
 import os
+from prompt_toolkit.completion import WordCompleter
 
 @click.group()
 def main():
@@ -141,20 +144,26 @@ def find_path_difference(path1, path2):
     return os.path.sep.join(rel_path)
 
 @main.command('create-project')
-@click.option('--type', type=click.Choice(['cli', 'lib']), prompt='Project type', help='The type of project (cli or lib)')
 @click.option('--name', prompt='Project name', help='The name of the project')
 @click.option('--description', prompt='Project description', help='A brief description of the project')
-def create_project(type, name, description):
+def create_project(name: str, description: str):
     """Create a new project within the current workspace."""
+    project_types = ['Python CLI', 'Pyo3 Rust Extension']
+
+    type = questionary.select(
+        "Select project type:",
+        choices=project_types
+    ).ask()
+
     try:
         session = get_docker_db_session()
-        console.handle_info(f"starting the create_project command. about to initialize the CookieCutterManager")
+        console.handle_info(f"Starting the create_project command. About to initialize the CookieCutterManager")
         cookie_cutter_manager = CookieCutterManager()
         console.handle_info(f"CookieCutterManager initialized successfully")
-        console.handle_info(f"about to get the template path for the project type: {type}")
+        console.handle_info(f"About to get the template path for the project type: {type}")
         template_path = cookie_cutter_manager.get_template_path(type)
         console.handle_info(f"Template path retrieved successfully: {template_path}")
-        console.handle_info(f"about to generate the project")
+        console.handle_info(f"About to generate the project")
         cookie_cutter_manager.generate_project(
             project_name=name,
             template_path=template_path,
@@ -165,17 +174,14 @@ def create_project(type, name, description):
             description=description
         )
         console.handle_success(f"Successfully created project: {name}")
-        console.handle_info(f"About to create a github repo")
+        console.handle_info(f"About to create a GitHub repo")
         create_github_repo(project)
         save_project(project, session)
         console.handle_success(f"Successfully created a GitHub repository for the project: {name}")
         push_project_to_repo(project)
-
-
-
-
     except Exception as e:
-        click.echo(f"An error occurred while creating the project: {str(e)}")
+        console.handle_error(f"An error occurred while creating the project: {str(e)}")
+
 if __name__ == "__main__":
     click.echo("Starting the application...")
     main()
