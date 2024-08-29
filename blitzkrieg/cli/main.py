@@ -1,13 +1,22 @@
 
+from prompt_toolkit import prompt
+import questionary
 from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
-from blitzkrieg.cli.cli_interface import handle_create_project_command, handle_delete_project_command
+
+from blitzkrieg.db.models.project import Project
+from blitzkrieg.project_management.db.connection import get_db_session, get_docker_db_session, save_project
+from blitzkrieg.utils.git_utils import authenticate_github_cli, commit_staged_files, create_git_tag, stage_files_for_commit, sync_local_changes_to_remote_repository
+from blitzkrieg.utils.github_utils import create_github_repo, push_project_to_repo
+from blitzkrieg.utils.poetry_utils import build_project_package, initialize_poetry, install_project_dependencies, update_project_version
+from blitzkrieg.utils.validation_utils import validate_package_installation, validate_version_number
 import click
-from packaging import version as packaging_version
 import subprocess
 from blitzkrieg.cookie_cutter_manager import CookieCutterManager
 from blitzkrieg.ui_management.console_instance import console
 from blitzkrieg.workspace_manager import WorkspaceManager
+import rust_codetextualizer
 import os
+from prompt_toolkit.completion import WordCompleter
 
 @click.group()
 def main():
@@ -59,58 +68,53 @@ def setup_test():
 # @main.command('create')
 # def create_project():
 #     handle_create_project_command()import os
+
+@main.command('contextualize')
+def contextualize():
+    try:
+        console.handle_wait("Starting the contextualization process")
+        rust_codetextualizer.extract_code_context('blitz_init')
+
+    except Exception as e:
+        console.handle_error(f"An error occurred during contextualization: {str(e)}")
 @main.command('release')
 @click.option('--version', prompt='New version number', help='The new version number for the release')
 def release(version):
     """Set up Poetry and release a new version of Blitzkrieg to PyPI"""
 
-    try:
-        # Validate the version number
-        packaging_version.parse(version)
-    except packaging_version.InvalidVersion:
-        click.echo(f"Invalid version number: {version}")
-        return
+    validate_version_number(version)
 
     try:
-        # Check if Poetry is installed
-        try:
-            subprocess.run(["poetry", "--version"], check=True)
-        except FileNotFoundError:
-            click.echo("Poetry is not installed. Installing Poetry...")
-            subprocess.run(["pip", "install", "poetry"], check=True)
+        poetry_installation_is_successful = validate_package_installation('poetry')
 
-        # Initialize Poetry if pyproject.toml doesn't exist
-        if not os.path.exists('pyproject.toml'):
-            click.echo("Initializing Poetry...")
-            subprocess.run(["poetry", "init", "--no-interaction"], check=True)
+        if not poetry_installation_is_successful:
+            console.handle_error("Poetry installation failed. Check the validate_poetry_installation() function.")
 
-        # Update the version in pyproject.toml
-        subprocess.run(["poetry", "version", version], check=True)
+        initialize_poetry()
+        update_project_version(version)
+        install_project_dependencies()
+        build_project_package()
 
-        # Install dependencies
-        subprocess.run(["poetry", "install"], check=True)
-
-        # Build the package
-        subprocess.run(["poetry", "build"], check=True)
 
         # Check for PyPI credentials
         pypi_username = "__token__"
-        pypi_api_key = blitz_env_manager.get_global_var('PYPI_API_KEY')
+        pypi_api_key = blitz_env_manager.get_global_env_var('PYPI_API_KEY')
         if not pypi_api_key:
-            click.echo("PYPI_API_KEY is not set in the global .blitz.env file. Please set it and try again.")
-            return
+            blitz_env_manager.set_global_env_var('PYPI_API_KEY', click.prompt("Enter your PyPI API key"))
+            pypi_api_key = blitz_env_manager.get_global_env_var('PYPI_API_KEY')
 
         # Publish to PyPI
         subprocess.run(["poetry", "publish", "--username", pypi_username, "--password", pypi_api_key], check=True)
 
         # Create a git tag for the new version
-        subprocess.run(["git", "add", "pyproject.toml"], check=True)
-        subprocess.run(["git", "commit", "-m", f"Bump version to {version}"], check=True)
-        subprocess.run(["git", "tag", f"v{version}"], check=True)
-
+        stage_files_for_commit(['pyproject.toml'])
+        commit_message = f"Bump version to {version}"
+        commit_staged_files(commit_message)
+        tag_name = f"v{version}"
+        create_git_tag(tag_name)
         # Push the new tag and commit to the remote repository using GitHub CLI
-        subprocess.run(["gh", "auth", "status"], check=True)  # Ensure you're authenticated
-        subprocess.run(["gh", "repo", "sync"], check=True)  # Sync changes
+        authenticate_github_cli()
+        sync_local_changes_to_remote_repository()
 
         click.echo(f"Successfully set up Poetry and released Blitzkrieg version {version} to PyPI!")
     except subprocess.CalledProcessError as e:
@@ -140,30 +144,48 @@ def find_path_difference(path1, path2):
     return os.path.sep.join(rel_path)
 
 @main.command('create-project')
-@click.option('--type', type=click.Choice(['cli', 'lib']), prompt='Project type', help='The type of project (cli or lib)')
-@click.option('--name', prompt='Project name', help='The name of the project')
-@click.option('--description', prompt='Project description', help='A brief description of the project')
-def create_project(type, name, description):
+def create_project():
     """Create a new project within the current workspace."""
+    project_types = ['Python CLI', 'Pyo3 Rust Extension']
+
+    type = questionary.select(
+        "Select project type:",
+        choices=project_types
+    ).ask()
+
+    project_name = questionary.text("Enter the project name:").ask()
+    short_description = questionary.text("Enter a short description for the project (roughly 3-5 words):").ask()
+    description = questionary.text("Enter a detailed description for the project:").ask()
+
+    project = Project(
+        name=project_name,
+        project_type=type,
+        short_description=short_description,
+        description=description
+    )
+
     try:
-        console.handle_info(f"starting the create_project command. about to initialize the CookieCutterManager")
+        session = get_docker_db_session()
+        console.handle_info(f"Starting the create_project command. About to initialize the CookieCutterManager")
         cookie_cutter_manager = CookieCutterManager()
         console.handle_info(f"CookieCutterManager initialized successfully")
-        console.handle_info(f"about to get the template path for the project type: {type}")
+        console.handle_info(f"About to get the template path for the project type: {type}")
         template_path = cookie_cutter_manager.get_template_path(type)
         console.handle_info(f"Template path retrieved successfully: {template_path}")
-        console.handle_info(f"about to generate the project")
+        console.handle_info(f"About to generate the project")
         cookie_cutter_manager.generate_project(
-            project_name=name,
             template_path=template_path,
-            description=description
+            project=project
         )
-        console.handle_success(f"Successfully created project: {name}")
-
-
-
+        console.handle_success(f"Successfully created project: {project_name}")
+        console.handle_info(f"About to create a GitHub repo")
+        create_github_repo(project)
+        save_project(project, session)
+        console.handle_success(f"Successfully created a GitHub repository for the project: {project_name}")
+        push_project_to_repo(project)
     except Exception as e:
-        click.echo(f"An error occurred while creating the project: {str(e)}")
+        console.handle_error(f"An error occurred while creating the project: {str(e)}")
+
 if __name__ == "__main__":
     click.echo("Starting the application...")
     main()

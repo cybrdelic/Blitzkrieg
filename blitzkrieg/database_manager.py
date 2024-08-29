@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from blitzkrieg.db.models.project import Project
 from blitzkrieg.ui_management.decorators import with_spinner
 
 class DatabaseManager:
@@ -13,7 +14,7 @@ class DatabaseManager:
         self.db_port = db_port
 
     def get_db_uri(self):
-        db_uri = f'postgresql+psycopg2://{self.db_user}:{self.db_password}@alexfigueroa-postgres:{self.db_port}/{self.db_name}'
+        db_uri = f'postgresql+psycopg2://{self.db_user}:{self.db_password}@host.docker.internal:{self.db_port}/{self.db_name}'
         return db_uri
 
     def get_engine(self, db_uri):
@@ -29,6 +30,10 @@ class DatabaseManager:
         # creates schema
         with engine.connect() as connection:
             connection.execute(f'CREATE SCHEMA IF NOT EXISTS {schema_name}')
+
+    def get_project_by_name(self, project_name, session):
+        project = session.query(Project).filter(Project.name == project_name).first()
+        return project
 
 
 

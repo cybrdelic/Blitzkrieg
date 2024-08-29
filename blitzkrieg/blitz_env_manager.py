@@ -67,6 +67,7 @@ class BlitzEnvManager:
             f.writelines(lines)
 
     def get_global_env_var(self, key: str) -> Optional[str]:
+        self.console.handle_info(f"Checking global env var at {self.global_env_file_path} for the key {key}...")
         return self._get_env_var(key, self.global_env_file_path)
 
     def set_global_env_var(self, key: str, value: str):
