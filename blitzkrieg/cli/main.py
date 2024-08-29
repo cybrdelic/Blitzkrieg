@@ -144,9 +144,7 @@ def find_path_difference(path1, path2):
     return os.path.sep.join(rel_path)
 
 @main.command('create-project')
-@click.option('--name', prompt='Project name', help='The name of the project')
-@click.option('--description', prompt='Project description', help='A brief description of the project')
-def create_project(name: str, description: str):
+def create_project():
     """Create a new project within the current workspace."""
     project_types = ['Python CLI', 'Pyo3 Rust Extension']
 
@@ -154,6 +152,17 @@ def create_project(name: str, description: str):
         "Select project type:",
         choices=project_types
     ).ask()
+
+    project_name = questionary.text("Enter the project name:").ask()
+    short_description = questionary.text("Enter a short description for the project (roughly 3-5 words):").ask()
+    description = questionary.text("Enter a detailed description for the project:").ask()
+
+    project = Project(
+        name=project_name,
+        project_type=type,
+        short_description=short_description,
+        description=description
+    )
 
     try:
         session = get_docker_db_session()
@@ -165,19 +174,14 @@ def create_project(name: str, description: str):
         console.handle_info(f"Template path retrieved successfully: {template_path}")
         console.handle_info(f"About to generate the project")
         cookie_cutter_manager.generate_project(
-            project_name=name,
             template_path=template_path,
-            description=description
+            project=project
         )
-        project = Project(
-            name=name,
-            description=description
-        )
-        console.handle_success(f"Successfully created project: {name}")
+        console.handle_success(f"Successfully created project: {project_name}")
         console.handle_info(f"About to create a GitHub repo")
         create_github_repo(project)
         save_project(project, session)
-        console.handle_success(f"Successfully created a GitHub repository for the project: {name}")
+        console.handle_success(f"Successfully created a GitHub repository for the project: {project_name}")
         push_project_to_repo(project)
     except Exception as e:
         console.handle_error(f"An error occurred while creating the project: {str(e)}")
