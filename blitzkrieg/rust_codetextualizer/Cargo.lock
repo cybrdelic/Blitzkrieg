@@ -336,6 +336,7 @@ name = "rust_codetextualizer"
 version = "0.1.0"
 dependencies = [
  "colored",
+ "parking_lot",
  "pyo3",
  "rayon",
  "regex",

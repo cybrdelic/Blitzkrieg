@@ -1,13 +1,14 @@
 use colored::*;
+use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 use rayon::prelude::*;
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use walkdir::{DirEntry, WalkDir};
 
 #[pyclass]
@@ -51,9 +52,11 @@ struct JavaScriptParser;
 
 impl LanguageParser for PythonParser {
     fn parse_file(&self, content: &str, file_path: &str) -> Vec<CodeElement> {
+        println!("Parsing Python file: {}", file_path);
         let mut elements = Vec::new();
-        let func_regex = Regex::new(r"(?m)^def\s+(\w+)\s*\([^)]*\):").unwrap();
+        let func_regex = Regex::new(r"(?m)^(?:async\s+)?def\s+(\w+)\s*\([^)]*\):").unwrap();
         let class_regex = Regex::new(r"(?m)^class\s+(\w+)(?:\([^)]*\))?:").unwrap();
+        let method_regex = Regex::new(r"(?m)^\s+(?:async\s+)?def\s+(\w+)\s*\([^)]*\):").unwrap();
         let import_regex = Regex::new(r"(?m)^(?:from\s+\S+\s+)?import\s+(.+)").unwrap();
 
         let mut imports = Vec::new();
@@ -61,10 +64,53 @@ impl LanguageParser for PythonParser {
             imports.push(import_match[1].trim().to_string());
         }
 
+        for cap in class_regex.captures_iter(content) {
+            let start = cap.get(0).unwrap().start();
+            let name = cap[1].to_string();
+            let (end, class_content) = self.extract_block(content, start);
+            println!("Found class: {}", name);
+            let mut class_element = CodeElement {
+                name: name.clone(),
+                element_type: "class".to_string(),
+                content: class_content.clone(),
+                file_path: file_path.to_string(),
+                language: "Python".to_string(),
+                start_line: content[..start].lines().count() + 1,
+                end_line: content[..end].lines().count(),
+                imports: imports.clone(),
+                nested_elements: Vec::new(),
+            };
+
+            for method_cap in method_regex.captures_iter(&class_content) {
+                let method_start = method_cap.get(0).unwrap().start();
+                let method_name = method_cap[1].to_string();
+                let (method_end, method_content) = self.extract_block(&class_content, method_start);
+                println!("  Found method: {}.{}", name, method_name);
+                let method_element = CodeElement {
+                    name: format!("{}.{}", name, method_name),
+                    element_type: "method".to_string(),
+                    content: method_content,
+                    file_path: file_path.to_string(),
+                    language: "Python".to_string(),
+                    start_line: class_element.start_line
+                        + class_content[..method_start].lines().count(),
+                    end_line: class_element.start_line
+                        + class_content[..method_end].lines().count(),
+                    imports: Vec::new(),
+                    nested_elements: Vec::new(),
+                };
+                class_element.nested_elements.push(method_element.clone());
+                elements.push(method_element);
+            }
+
+            elements.push(class_element);
+        }
+
         for cap in func_regex.captures_iter(content) {
             let start = cap.get(0).unwrap().start();
             let name = cap[1].to_string();
             let (end, element_content) = self.extract_block(content, start);
+            println!("Found top-level function: {}", name);
             elements.push(CodeElement {
                 name,
                 element_type: "function".to_string(),
@@ -78,32 +124,30 @@ impl LanguageParser for PythonParser {
             });
         }
 
-        for cap in class_regex.captures_iter(content) {
-            let start = cap.get(0).unwrap().start();
-            let name = cap[1].to_string();
-            let (end, element_content) = self.extract_block(content, start);
-            elements.push(CodeElement {
-                name,
-                element_type: "class".to_string(),
-                content: element_content,
-                file_path: file_path.to_string(),
-                language: "Python".to_string(),
-                start_line: content[..start].lines().count() + 1,
-                end_line: content[..end].lines().count(),
-                imports: imports.clone(),
-                nested_elements: Vec::new(),
-            });
-        }
-
+        println!(
+            "Finished parsing file: {}. Found {} elements.",
+            file_path,
+            elements.len()
+        );
         elements
     }
 
     fn find_references(&self, content: &str) -> HashSet<String> {
-        let call_regex = Regex::new(r"\b(\w+)\s*\(").unwrap();
-        call_regex
-            .captures_iter(content)
-            .filter_map(|cap| cap.get(1).map(|m| m.as_str().to_string()))
-            .collect()
+        let mut references = HashSet::new();
+
+        let call_regex = Regex::new(r"\b(\w+(?:\.\w+)*)\s*\(").unwrap();
+        let attr_regex = Regex::new(r"\b(\w+)\.(\w+)").unwrap();
+
+        for cap in call_regex.captures_iter(content) {
+            references.insert(cap[1].to_string());
+        }
+
+        for cap in attr_regex.captures_iter(content) {
+            references.insert(format!("{}.{}", cap[1].to_string(), cap[2].to_string()));
+        }
+
+        println!("Found {} references", references.len());
+        references
     }
 }
 
@@ -111,7 +155,11 @@ impl PythonParser {
     fn extract_block(&self, content: &str, start: usize) -> (usize, String) {
         let mut depth = 0;
         let mut end = start;
+        let max_depth = 1000; // Prevent infinite loops
         for (idx, line) in content[start..].lines().enumerate() {
+            if idx > max_depth {
+                break; // Break loop if depth is too high
+            }
             let stripped_line = line.trim();
             if idx == 0 || depth > 0 {
                 if stripped_line.ends_with(':') {
@@ -130,7 +178,6 @@ impl PythonParser {
         (end, content[start..end].to_string())
     }
 }
-
 impl LanguageParser for RustParser {
     fn parse_file(&self, content: &str, file_path: &str) -> Vec<CodeElement> {
         let mut elements = Vec::new();
@@ -364,7 +411,6 @@ fn detect_language(file_path: &Path) -> Language {
         Some("py") => Language::Python,
         Some("rs") => Language::Rust,
         Some("js") | Some("jsx") | Some("ts") | Some("tsx") | Some("mjs") => Language::JavaScript,
-
         _ => Language::Python, // Default to Python for unknown extensions
     }
 }
@@ -378,8 +424,19 @@ fn is_hidden(entry: &DirEntry) -> bool {
 }
 
 fn should_ignore(entry: &DirEntry) -> bool {
-    let ignore_dirs = [".git", "__pycache__", "node_modules", "target"];
-    entry.file_type().is_dir() && ignore_dirs.iter().any(|dir| entry.path().ends_with(dir))
+    let ignore_dirs = [
+        ".git",
+        "__pycache__",
+        "node_modules",
+        "target",
+        ".venv",
+        "venv",
+        "env",
+    ];
+    entry.file_type().is_dir()
+        && ignore_dirs
+            .iter()
+            .any(|dir| entry.path().to_string_lossy().contains(dir))
 }
 
 fn get_project_files(dir: &Path) -> Vec<PathBuf> {
@@ -398,36 +455,43 @@ fn process_file(
     keyword: &str,
     files_processed: &AtomicUsize,
     total_files: usize,
+    cancel_flag: &AtomicBool,
 ) -> Result<Vec<CodeElement>, std::io::Error> {
-    // Check if the file extension is one we want to process
-    if let Some(extension) = path.extension().and_then(|s| s.to_str()) {
-        if !["py", "rs", "js", "jsx", "ts", "tsx"].contains(&extension) {
-            return Ok(Vec::new());
-        }
-    } else {
+    if cancel_flag.load(Ordering::Relaxed) {
         return Ok(Vec::new());
     }
 
-    // Read the file content
-    let content = fs::read_to_string(path)?;
+    println!("Processing file: {:?}", path);
 
-    // Parse the file
+    if let Some(extension) = path.extension().and_then(|s| s.to_str()) {
+        if !["py", "rs", "js", "jsx", "ts", "tsx"].contains(&extension) {
+            println!("Skipping file with unsupported extension: {:?}", path);
+            return Ok(Vec::new());
+        }
+    } else {
+        println!("Skipping file without extension: {:?}", path);
+        return Ok(Vec::new());
+    }
+
+    let content = fs::read_to_string(path)?;
     let language = detect_language(path);
     let parser = get_parser_for_language(&language);
     let file_elements = parser.parse_file(&content, path.to_str().unwrap_or_default());
 
-    // Add all elements to the HashMap
     for element in &file_elements {
         all_elements.insert(element.name.clone(), element.clone());
+        if element.element_type == "class" {
+            for method in &element.nested_elements {
+                all_elements.insert(method.name.clone(), method.clone());
+            }
+        }
     }
 
-    // Filter elements that match the keyword
     let matched_elements: Vec<CodeElement> = file_elements
         .into_iter()
-        .filter(|element| element.name == keyword)
+        .filter(|element| element.name.contains(keyword))
         .collect();
 
-    // Process matched elements
     for element in &matched_elements {
         all_elements.insert(element.name.clone(), element.clone());
         let references = parser.find_references(&element.content);
@@ -440,9 +504,8 @@ fn process_file(
         }
     }
 
-    // Update progress
     let processed = files_processed.fetch_add(1, Ordering::SeqCst) + 1;
-    if processed % 10 == 0 || processed == total_files {
+    if processed % 5 == 0 || processed == total_files {
         println!("Processed {}/{} files", processed, total_files);
     }
 
@@ -452,20 +515,44 @@ fn process_file(
 fn trace_logic_chains(
     keyword: &str,
     all_elements: &HashMap<String, CodeElement>,
+    start: Instant,
+    timeout: Duration,
+    max_depth: usize,
+    cancel_flag: &AtomicBool,
 ) -> Option<CodeElement> {
+    println!("Starting trace_logic_chains for keyword: {}", keyword);
+
     fn trace_recursive(
         element: &CodeElement,
         all_elements: &HashMap<String, CodeElement>,
         traced: &mut HashSet<String>,
         depth: usize,
-    ) -> CodeElement {
-        if depth > 10 {
+        start: &Instant,
+        timeout: &Duration,
+        max_depth: usize,
+        cancel_flag: &AtomicBool,
+    ) -> Option<CodeElement> {
+        if cancel_flag.load(Ordering::Relaxed) {
+            println!("Tracing cancelled by user");
+            return None;
+        }
+
+        if start.elapsed() > *timeout {
+            println!("Tracing timed out");
+            return None;
+        }
+
+        if depth > max_depth {
             println!(
-                "{}: {} (depth limit reached)",
+                "{}: {} (max depth reached)",
                 "Stopping trace".bright_yellow(),
                 element.name
             );
-            return element.clone();
+            return Some(element.clone());
+        }
+
+        if depth % 5 == 0 {
+            println!("Tracing at depth: {}", depth);
         }
 
         println!(
@@ -477,16 +564,16 @@ fn trace_logic_chains(
         let mut traced_element = element.clone();
         traced_element.nested_elements.clear();
 
-        // Use a regex to find function calls and method invocations
-        let call_regex = Regex::new(r"\b(\w+)\s*\(|\b(\w+)\.\s*(\w+)\s*\(").unwrap();
-        let references: HashSet<String> = call_regex
-            .captures_iter(&element.content)
-            .filter_map(|cap| {
-                cap.get(1)
-                    .or_else(|| cap.get(3))
-                    .map(|m| m.as_str().to_string())
-            })
-            .collect();
+        let call_regex = Regex::new(r"((?:\w+\.)*\w+)\s*\(").unwrap();
+        let attr_regex = Regex::new(r"(\w+)\.(\w+)").unwrap();
+        let mut references = HashSet::new();
+
+        for cap in call_regex.captures_iter(&element.content) {
+            references.insert(cap[1].to_string());
+        }
+        for cap in attr_regex.captures_iter(&element.content) {
+            references.insert(cap[2].to_string());
+        }
 
         println!(
             "  Found {} potential references",
@@ -502,12 +589,18 @@ fn trace_logic_chains(
                         "Following reference".bright_green(),
                         reference.bright_yellow()
                     );
-                    traced_element.nested_elements.push(trace_recursive(
+                    if let Some(nested) = trace_recursive(
                         referenced_element,
                         all_elements,
                         traced,
                         depth + 1,
-                    ));
+                        start,
+                        timeout,
+                        max_depth,
+                        cancel_flag,
+                    ) {
+                        traced_element.nested_elements.push(nested);
+                    }
                 } else {
                     println!("    {}: {}", "Reference not found".bright_red(), reference);
                 }
@@ -520,19 +613,83 @@ fn trace_logic_chains(
             }
         }
 
-        traced_element
+        Some(traced_element)
     }
 
-    println!(
-        "{} {}",
-        "Starting trace for".bright_blue(),
-        keyword.bright_yellow()
-    );
-    all_elements.get(keyword).map(|element| {
+    // First, look for an exact match
+    if let Some(start_element) = all_elements.get(keyword) {
+        println!("Found exact match for keyword: {}", keyword);
         let mut traced = HashSet::new();
-        traced.insert(keyword.to_string());
-        trace_recursive(element, all_elements, &mut traced, 0)
-    })
+        return trace_recursive(
+            start_element,
+            all_elements,
+            &mut traced,
+            0,
+            &start,
+            &timeout,
+            max_depth,
+            cancel_flag,
+        );
+    }
+
+    // If no exact match, look for methods ending with the keyword
+    println!("No exact match found, searching for methods");
+    let method_matches: Vec<_> = all_elements
+        .values()
+        .filter(|e| e.name.ends_with(&format!(".{}", keyword)))
+        .collect();
+
+    if !method_matches.is_empty() {
+        println!("Found matching methods:");
+        for element in &method_matches {
+            println!("  {}", element.name);
+        }
+        if let Some(matched_element) = method_matches.first() {
+            println!("Tracing first matching method: {}", matched_element.name);
+            let mut traced = HashSet::new();
+            return trace_recursive(
+                matched_element,
+                all_elements,
+                &mut traced,
+                0,
+                &start,
+                &timeout,
+                max_depth,
+                cancel_flag,
+            );
+        }
+    }
+
+    // If still no match, look for partial matches
+    println!("No exact or method match found, searching for partial matches");
+    let partial_matches: Vec<_> = all_elements
+        .values()
+        .filter(|e| e.name.contains(keyword))
+        .collect();
+
+    if !partial_matches.is_empty() {
+        println!("Found partial matches:");
+        for element in &partial_matches {
+            println!("  {}", element.name);
+        }
+        if let Some(matched_element) = partial_matches.first() {
+            println!("Tracing first partial match: {}", matched_element.name);
+            let mut traced = HashSet::new();
+            return trace_recursive(
+                matched_element,
+                all_elements,
+                &mut traced,
+                0,
+                &start,
+                &timeout,
+                max_depth,
+                cancel_flag,
+            );
+        }
+    }
+
+    println!("No matching element found for keyword: {}", keyword);
+    None
 }
 
 fn format_output(element: &CodeElement, depth: usize) -> String {
@@ -596,9 +753,28 @@ fn format_output(element: &CodeElement, depth: usize) -> String {
 }
 
 #[pyfunction]
-fn extract_code_context(keyword: String) -> PyResult<String> {
+fn extract_code_context(
+    keyword: String,
+    timeout_seconds: Option<u64>,
+    max_depth: Option<usize>,
+) -> PyResult<String> {
     let start = Instant::now();
+    let timeout = Duration::from_secs(timeout_seconds.unwrap_or(300)); // Default to 5 minutes if not specified
+    let max_depth = max_depth.unwrap_or(20); // Default max depth
     let current_dir = std::env::current_dir()?;
+
+    let cancel_flag = Arc::new(AtomicBool::new(false));
+    let cancel_flag_clone = cancel_flag.clone();
+
+    // Spawn a thread to listen for user input to cancel
+    std::thread::spawn(move || {
+        println!("Press 'q' and Enter to cancel the operation.");
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input).unwrap();
+        if input.trim() == "q" {
+            cancel_flag_clone.store(true, Ordering::Relaxed);
+        }
+    });
 
     let output = Arc::new(Mutex::new(String::new()));
 
@@ -609,7 +785,9 @@ fn extract_code_context(keyword: String) -> PyResult<String> {
         current_dir.to_string_lossy().bright_blue()
     );
     {
-        let mut output = output.lock().unwrap();
+        let mut output = output
+            .lock()
+            .map_err(|_| PyRuntimeError::new_err("Failed to lock output"))?;
         output.push_str(&format!(
             "Searching for '{}' in directory: {:?}\n\n",
             keyword, current_dir
@@ -623,7 +801,9 @@ fn extract_code_context(keyword: String) -> PyResult<String> {
         total_files.to_string().bright_cyan()
     );
     {
-        let mut output = output.lock().unwrap();
+        let mut output = output
+            .lock()
+            .map_err(|_| PyRuntimeError::new_err("Failed to lock output"))?;
         output.push_str(&format!(
             "Found {} potentially relevant files\n\n",
             total_files
@@ -634,8 +814,24 @@ fn extract_code_context(keyword: String) -> PyResult<String> {
     let files_processed = Arc::new(AtomicUsize::new(0));
 
     project_files.par_iter().for_each(|path| {
-        let mut elements = all_elements.lock().unwrap();
-        match process_file(path, &mut elements, &keyword, &files_processed, total_files) {
+        if cancel_flag.load(Ordering::Relaxed) {
+            return;
+        }
+        let mut elements = match all_elements.lock() {
+            Ok(guard) => guard,
+            Err(_) => {
+                eprintln!("Failed to lock all_elements");
+                return;
+            }
+        };
+        match process_file(
+            path,
+            &mut elements,
+            &keyword,
+            &files_processed,
+            total_files,
+            &cancel_flag,
+        ) {
             Ok(file_elements) => {
                 if !file_elements.is_empty() {
                     println!(
@@ -643,8 +839,9 @@ fn extract_code_context(keyword: String) -> PyResult<String> {
                         "Found relevant elements in file".bright_green(),
                         path
                     );
-                    let mut output = output.lock().unwrap();
-                    output.push_str(&format!("Found relevant elements in file: {:?}\n", path));
+                    if let Ok(mut output) = output.lock() {
+                        output.push_str(&format!("Found relevant elements in file: {:?}\n", path));
+                    }
                 }
             }
             Err(e) => {
@@ -658,15 +855,31 @@ fn extract_code_context(keyword: String) -> PyResult<String> {
         }
     });
 
+    if cancel_flag.load(Ordering::Relaxed) {
+        return Err(PyRuntimeError::new_err("Operation cancelled by user"));
+    }
+
+    if start.elapsed() > timeout {
+        return Err(PyRuntimeError::new_err("Operation timed out"));
+    }
+
     println!("\n{}", "Starting logic chain tracing...".bright_green());
     let traced_element = {
-        let elements = all_elements.lock().unwrap();
-        trace_logic_chains(&keyword, &elements)
+        let elements = all_elements
+            .lock()
+            .map_err(|_| PyRuntimeError::new_err("Failed to lock all_elements"))?;
+        println!("Number of elements in HashMap: {}", elements.len());
+        for (key, value) in elements.iter() {
+            println!("Element in HashMap: {} ({})", key, value.element_type);
+        }
+        trace_logic_chains(&keyword, &elements, start, timeout, max_depth, &cancel_flag)
     };
 
     let duration = start.elapsed();
     {
-        let mut output = output.lock().unwrap();
+        let mut output = output
+            .lock()
+            .map_err(|_| PyRuntimeError::new_err("Failed to lock output"))?;
         output.push_str(&format!("Analysis completed in {:?}\n\n", duration));
         output.push_str(&format!("Files processed: {}\n\n", total_files));
     }
@@ -683,7 +896,9 @@ fn extract_code_context(keyword: String) -> PyResult<String> {
             "Formatted output:".bright_cyan(),
             formatted_output
         );
-        let mut output = output.lock().unwrap();
+        let mut output = output
+            .lock()
+            .map_err(|_| PyRuntimeError::new_err("Failed to lock output"))?;
         output.push_str(&format!("Found and traced element: {}\n\n", keyword));
         output.push_str(&formatted_output);
     } else {
@@ -692,14 +907,19 @@ fn extract_code_context(keyword: String) -> PyResult<String> {
             "Element not found".bright_red(),
             keyword.bright_yellow()
         );
-        let mut output = output.lock().unwrap();
+        let mut output = output
+            .lock()
+            .map_err(|_| PyRuntimeError::new_err("Failed to lock output"))?;
         output.push_str(&format!(
             "Element '{}' not found in the codebase.\n",
             keyword
         ));
     }
 
-    let final_output = output.lock().unwrap().clone();
+    let final_output = output
+        .lock()
+        .map_err(|_| PyRuntimeError::new_err("Failed to lock output"))?
+        .clone();
     println!(
         "{}: {} characters",
         "Final output length".bright_cyan(),
