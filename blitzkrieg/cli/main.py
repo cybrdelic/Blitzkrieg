@@ -1,9 +1,11 @@
 
+from typing import List
 from prompt_toolkit import prompt
 import questionary
 from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
 
 from blitzkrieg.db.models.project import Project
+from blitzkrieg.enums.project_types_enum import ProjectTypesEnum
 from blitzkrieg.project_management.db.connection import get_db_session, get_docker_db_session, save_project
 from blitzkrieg.utils.git_utils import authenticate_github_cli, commit_staged_files, create_git_tag, stage_files_for_commit, sync_local_changes_to_remote_repository
 from blitzkrieg.utils.github_utils import clone_github_repo, create_github_repo, get_github_repo_details, push_project_to_repo
@@ -146,7 +148,10 @@ def find_path_difference(path1, path2):
 @main.command('create-project')
 def create_project():
     """Create a new project within the current workspace."""
-    project_types = ['Python CLI', 'Pyo3 Rust Extension']
+    project_types = [
+        {'name': pt.name.replace('_', ' ').title(), 'value': pt.value}
+        for pt in ProjectTypesEnum
+    ]
 
     type = questionary.select(
         "Select project type:",
@@ -188,10 +193,20 @@ def create_project():
         console.handle_error(f"An error occurred while creating the project: {str(e)}")
 
 @main.command('track-project')
-def track_project():
+# add optional flag to allow the user to attach a repo_url to clone the project from
+@click.option('--repo_url', prompt='Enter the project repository URL', help='The URL of the project repository')
+def track_project(repo_url):
     """Track a project within the current workspace."""
-    project_name = questionary.text("Enter the project name:").ask()
-    project_github_repo_details = get_github_repo_details(project_name)
+    if repo_url:
+        project_github_repo_details = get_github_repo_details(repo_url)
+    else:
+        project_github_repo_details = get_github_repo_details()
+
+    project_name = project_github_repo_details['name']
+
+    if repo_url:
+        project_github_repo_details['url'] = repo_url
+
     project = Project(
         name=project_name,
         github_repo=project_github_repo_details['url'],
