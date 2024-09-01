@@ -1,6 +1,7 @@
 import uuid
 from sqlalchemy import UUID, Column, Integer, String, ForeignKey, Boolean, DateTime, Enum, func
 from sqlalchemy.orm import relationship
+from blitzkrieg.enums.project_types_enum import ProjectTypesEnum
 from blitzkrieg.project_management.db.models.Base import Base
 class Project(Base):
     __tablename__ = 'project'
@@ -19,6 +20,6 @@ class Project(Base):
     short_description = Column(String, nullable=True)  # Short description of the project
     description = Column(String, nullable=True)  # Description of the project
     # project_type should be an Enum of python_cli, pyo3_rust_extension, etc.
-    project_type = Column(Enum('python_cli', 'pyo3_rust_extension', name='project_type_enum'))
+    project_type = Column(Enum(ProjectTypesEnum), name='project_type_enum')
     # Relationship to self to allow nested projects
     children = relationship('Project', backref='parent', remote_side=[id])
