@@ -84,8 +84,6 @@ class WorkspaceDbManager:
             "PGADMIN_PORT": self.pgadmin_manager.pgadmin_port,
             "WORKSPACE_NAME": self.workspace_name,
             "WORKSPACE_DIRECTORY": self.workspace_directory_manager.workspace_path,
-            "ALEMBIC_INI_PATH": self.alembic_manager.alembic_ini_path,
-            "ALEMBIC_ENV_PATH": self.alembic_manager.alembic_env_path,
             "SQLALCHEMY_MODELS_PATH": self.alembic_manager.sqlalchemy_models_path,
             "SQLALCHEMY_URI": self.get_sqlalchemy_uri(),
             "POSTGRES_SERVER_CONFIG_HOST": self.pgadmin_manager.postgres_server_config_host,

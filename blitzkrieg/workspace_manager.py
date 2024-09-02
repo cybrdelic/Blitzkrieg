@@ -60,6 +60,9 @@ class WorkspaceManager:
 
         workspace_directory_initalization_group = self.console.create_phase(blitzkrieg_initialization_process, "Workspace Directory Initialization")
         workspace_container_initialization = self.console.create_phase(blitzkrieg_initialization_process, "Workspace Container Initialization")
+        database_initialization = self.console.create_phase(blitzkrieg_initialization_process, "Database Initialization")
+
+        # Directory initialization
         self.console.add_action(
             phase=workspace_directory_initalization_group,
             name="Creating workspace directory...",
@@ -69,38 +72,11 @@ class WorkspaceManager:
 
         self.console.add_action(
             phase=workspace_directory_initalization_group,
-            name="Running alembic_init.sh script",
-            func=self.alembic_manager.initialize_alembic
-        )
-
-        self.console.add_action(
-            phase=workspace_directory_initalization_group,
-            name="Creating workspace .blitz.env file",
-            func=self.blitz_env_manager.ensure_workspace_env_file
-        )
-        self.console.add_action(
-            phase=workspace_directory_initalization_group,
-            name="Creating global .blitz.env file",
-            func=self.blitz_env_manager.ensure_global_env_file
-        )
-
-        self.console.add_action(
-            phase=workspace_directory_initalization_group,
-            name="Saving workspace directory details to workspace .blitz.env",
-            func=self.workspace_directory_manager.save_workspace_directory_details_to_env_file
-        )
-        self.console.add_action(
-            phase=workspace_directory_initalization_group,
             name="Creating workspace docker network",
             func=self.docker_manager.create_docker_network,
             network_name=self.docker_network_name
         )
 
-        self.console.add_action(
-            phase=workspace_directory_initalization_group,
-            name="Storing workspace configuration in .env file...",
-            func=self.store_credentials
-        )
         self.console.add_action(
             phase=workspace_directory_initalization_group,
             func=self.alembic_manager.create_sqlalchemy_models_directory,
@@ -114,6 +90,25 @@ class WorkspaceManager:
         )
 
         self.console.add_action(
+            phase=workspace_directory_initalization_group,
+            name="Creating workspace .blitz.env file",
+            func=self.blitz_env_manager.ensure_workspace_env_file
+        )
+
+        self.console.add_action(
+            phase=workspace_directory_initalization_group,
+            name="Creating global .blitz.env file",
+            func=self.blitz_env_manager.ensure_global_env_file
+        )
+
+        self.console.add_action(
+            phase=workspace_directory_initalization_group,
+            name="Saving workspace directory details to workspace .blitz.env",
+            func=self.workspace_directory_manager.save_workspace_directory_details_to_env_file
+        )
+
+        # Container initialization
+        self.console.add_action(
             phase=workspace_container_initialization,
             name="Building workspace container...",
             func=self.workspace_docker_manager.build_workspace_container
@@ -125,8 +120,38 @@ class WorkspaceManager:
             func=self.workspace_docker_manager.start_workspace_container
         )
 
+        # Database initialization
         self.console.add_action(
-            phase=workspace_container_initialization,
+            phase=database_initialization,
+            name="Waiting for database to be ready...",
+            func=self.alembic_manager.wait_for_db
+        )
+
+        self.console.add_action(
+            phase=database_initialization,
+            name="Creating project_management schema...",
+            func=self.alembic_manager.create_schema
+        )
+
+        self.console.add_action(
+            phase=database_initialization,
+            name="Initializing Alembic...",
+            func=self.alembic_manager.initialize_alembic
+        )
+
+        # Environment setup
+
+
+
+
+        self.console.add_action(
+            phase=database_initialization,
+            name="Storing workspace configuration in .env file...",
+            func=self.store_credentials
+        )
+
+        self.console.add_action(
+            phase=database_initialization,
             name="Saving workspace details to workspace database",
             func=self.save_workspace_details
         )
@@ -194,8 +219,6 @@ class WorkspaceManager:
                 ("PGADMIN_PORT", self.pgadmin_port),
                 ("WORKSPACE_NAME", self.workspace_name),
                 ("WORKSPACE_DIRECTORY", self.workspace_directory_manager.workspace_path),
-                ("ALEMBIC_INI_PATH", self.alembic_manager.alembic_ini_path),
-                ("ALEMBIC_ENV_PATH", self.alembic_manager.alembic_env_path),
                 ("SQLALCHEMY_MODELS_PATH", self.alembic_manager.sqlalchemy_models_path),
                 ("SQLALCHEMY_URI", self.workspace_db_manager.get_sqlalchemy_uri()),
                 ("POSTGRES_SERVER_CONFIG_HOST", self.pgadmin_manager.postgres_server_config_host),
