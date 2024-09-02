@@ -1,6 +1,8 @@
 import json
 import os
 from urllib.parse import urlparse
+
+import questionary
 from blitzkrieg.db.models.project import Project
 from blitzkrieg.ui_management.console_instance import console
 import click
@@ -85,10 +87,21 @@ def create_test_pypi_project(project: Project):
     except Exception as e:
         console.handle_error(f"An error occurred while creating test PYPI project for {project_name}: {str(e)}")
 
-def get_github_repo_details(project_name: str):
+def get_github_repo_details(repo_url: str = None):
     github_token = load_github_token()
+    if repo_url:
+        parsed_url = urlparse(repo_url)
+        project_name = os.path.basename(parsed_url.path)
+        github_username = os.path.basename(os.path.dirname(parsed_url.path))
+    else:
+        project_name = questionary.text("Enter the name of the repository").ask()
+        github_username = blitz_env_manager.get_global_env_var('GITHUB_USERNAME')
+        if not github_username:
+            blitz_env_manager.set_global_env_var('GITHUB_USERNAME', questionary.text("Enter your GitHub username").ask())
+            github_username = blitz_env_manager.get_global_env_var('GITHUB_USERNAME')
 
-    url = f"https://api.github.com/repos/alexfigueroa-solutions/{project_name}"
+
+    url = f"https://api.github.com/repos/{github_username}/{project_name}"
     headers = {
         "Authorization": f"token {github_token}",
         "Accept": "application/vnd.github.v3+json"
@@ -121,10 +134,6 @@ def get_github_repo_details(project_name: str):
 def clone_github_repo(repo_url: str):
     github_token = load_github_token()
 
-    headers = {
-        "Authorization": f"token {github_token}",
-        "Accept": "application/vnd.github.v3+json"
-    }
 
     workspace_dir_path = blitz_env_manager.get_active_workspace_dir()
     # get last dirname of workspace_dir_path
