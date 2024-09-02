@@ -1,0 +1,41 @@
+networks:
+  alexfigueroa-network:
+    external: true
+services:
+  alexfigueroa-pgadmin:
+    container_name: alexfigueroa-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: alexfigueroa.cybr@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: pw
+    image: dpage/pgadmin4:latest
+    networks:
+      - alexfigueroa-network
+    ports:
+      - 5050:80
+      - 443:443
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - /home/cybrdelic/alexf/software-projects/dev_tools/Blitzkrieg/alexfigueroa/servers.json:/pgadmin4/servers.json:ro
+  alexfigueroa-postgres:
+    container_name: alexfigueroa-postgres
+    environment:
+      POSTGRES_DB: alexfigueroa
+      POSTGRES_PASSWORD: pw
+      POSTGRES_USER: alexfigueroa-db-user
+    healthcheck:
+      interval: 10s
+      retries: 5
+      test:
+        - CMD-SHELL
+        - pg_isready -U alexfigueroa-db-user -d alexfigueroa
+      timeout: 5s
+    image: postgres:latest
+    networks:
+      - alexfigueroa-network
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+volumes:
+  pgadmin_data: null
+  postgres_data: null
