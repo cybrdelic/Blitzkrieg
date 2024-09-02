@@ -2,6 +2,7 @@ import os
 from cookiecutter.main import cookiecutter
 import questionary
 from blitzkrieg.db.models.project import Project
+from blitzkrieg.enums.project_types_enum import ProjectTypesEnum
 from blitzkrieg.ui_management.console_instance import console
 from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
 
@@ -9,6 +10,25 @@ class CookieCutterManager:
     def __init__(self):
         self.template_dir = os.path.join(os.path.dirname(__file__), 'templates')
         self.blitz_env_manager = blitz_env_manager
+
+    def generate_workspace(self, workspace_name: str):
+        cwd = os.getcwd()
+        workspace_path = os.path.join(cwd, workspace_name)
+        workspace_template_path = self.get_workspace_template_path()
+        blitz_env_manager.set_workspace(workspace_name)
+        try:
+            cookiecutter(
+                workspace_template_path,
+                no_input=True,
+                extra_context={
+                    'workspace_name': workspace_name
+                },
+                output_dir=cwd
+            )
+            console.handle_success(f"Generated workspace {workspace_name} at {workspace_path}")
+        except Exception as e:
+            console.handle_error(f"Failed to generate workspace: {str(e)}")
+
 
     def generate_project(self, project: Project, template_path):
         try:
@@ -36,14 +56,14 @@ class CookieCutterManager:
         project_short_description = project.short_description
 
         project_type_template_name_mapper = {
-            'python_cli': {
+            ProjectTypesEnum.PYTHON_CLI: {
                 'project_name': 'Python CLI',
                 'project_slug': 'python_cli',
                 'project_description': 'A Python CLI project',
                 'author_name': 'Your Name',
                 'author_email': ''
             },
-            'pyo3_rust_extension': {
+            ProjectTypesEnum.PYO3_RUST_EXTENSION: {
                 # prompt the user for text input using questionary for project_name value
                 'project_name': project_name,
                 'project_slug': project_name.lower().replace(' ', '_'),
@@ -51,20 +71,42 @@ class CookieCutterManager:
                 'full_name': 'Your Name',
                 'email': '',
                 'project_short_description': project_short_description,
+                'github_username': 'alexfigueroa-solutions'
+            },
+            ProjectTypesEnum.DJANGO_FASTAPI_REACT_WEB_APPLICATION: {
+                'github_repository_name': project_name.lower().replace(' ', '-'),
+                'app_name': project_name.lower().replace(' ', '_'),
+                'email': '',
+                'description': project_description,
                 'github_username': 'alexfigueroa-solutions',
-
-
             }
         }
         return project_type_template_name_mapper.get(project_type)
 
-    def get_template_path(self, project_type):
+    def get_workspace_template_path(self):
+        return os.path.join(self.template_dir, 'blitzkrieg-postgres-pgadmin-workspace')
+
+    def get_template_path(self, project_type: ProjectTypesEnum):
         # make project_type snake_case
         project_type = project_type.lower().replace(' ', '_')
         project_type_template_name_mapper = {
-            'python_cli': 'poetry-cli-template',
-            'pyo3_rust_extension': 'pyo3-rust-extension-template'
+            ProjectTypesEnum.PYTHON_CLI: 'poetry-cli-template',
+            ProjectTypesEnum.PYO3_RUST_EXTENSION: 'pyo3-rust-extension-template',
+            ProjectTypesEnum.DJANGO_FASTAPI_REACT_WEB_APPLICATION: 'https://github.com/agconti/cookiecutter-django-rest',
+            ProjectTypesEnum.HYPERMODERN_PYTHON: 'https://github.com/cjolowicz/cookiecutter-hypermodern-python',
+            ProjectTypesEnum.GOLANG_CLI: 'https://github.com/lacion/cookiecutter-golang',
+            ProjectTypesEnum.FLASK_RESTFUL: 'https://github.com/karec/cookiecutter-flask-restful',
+            ProjectTypesEnum.REPRODUCIBLE_SCIENCE: 'https://github.com/mkrapp/cookiecutter-reproducible-science',
+            ProjectTypesEnum.DJANGO_SHOP: 'https://github.com/awesto/cookiecutter-django-shop',
+            ProjectTypesEnum.DATA_SCIENCE_STACK: 'https://github.com/jgoerner/data-science-stack-cookiecutter',
+            ProjectTypesEnum.DJANGO_SAAS: 'https://github.com/ernestofgonzalez/djangorocket',
+            ProjectTypesEnum.SWIFT_PROJECT: 'https://github.com/artemnovichkov/swift-project-template',
+            ProjectTypesEnum.PYQT5_GUI: 'https://github.com/artemnovichkov/swift-project-template'
         }
+
+        if project_type == ProjectTypesEnum.DJANGO_FASTAPI_REACT_WEB_APPLICATION:
+            return project_type_template_name_mapper.get(project_type)
+
         template_name = project_type_template_name_mapper.get(project_type)
         if not template_name:
             raise ValueError(f"Invalid project type: {project_type}")
