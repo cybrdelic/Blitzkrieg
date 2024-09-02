@@ -30,6 +30,31 @@ class AlembicManager:
             self.workspace_path,
             os.path.join(self.workspace_path, 'sqlalchemy_models'),
         ]
+
+    def initialize_alembic(self):
+        try:
+            self.console.handle_info("Initializing Alembic")
+            self._run_command(['alembic', 'init', 'migrations'])
+
+            self.console.handle_info("Running initial migration...")
+            self._run_command(['alembic', 'revision', '--autogenerate', '-m', "initial migration"])
+
+            self.console.handle_info("Upgrading to head...")
+            self._run_command(['alembic', 'upgrade', 'head'])
+
+            self.console.handle_success("Script completed successfully")
+        except subprocess.CalledProcessError as e:
+            self.console.handle_error(f"Command failed: {e}")
+        except Exception as e:
+            self.console.handle_error(f"An error occurred: {str(e)}")
+
+    def _run_command(self, command):
+        result = subprocess.run(command, cwd=self.workspace_path, check=True,
+                                capture_output=True, text=True)
+        self.console.handle_info(result.stdout)
+        if result.stderr:
+            self.console.handle_warning(result.stderr)
+
     def get_alembic_init_content(self):
         return f"""
 [alembic]
@@ -195,6 +220,18 @@ datefmt = %H:%M:%S
                 return self.console.handle_error(f"alembic_init.sh not found at {self.alembic_init__template_path}")
         except Exception as e:
             return self.console.handle_error(f"Failed to copy alembic_init.py: {str(e)}")
+
+    def copy_entrypoint_script(self):
+        try:
+            entrypoint_script_path = os.path.join(self.blitzkrieg_path, 'workspace_management', 'templates', 'entrypoint.sh')
+            if os.path.exists(entrypoint_script_path):
+                shutil.copy(entrypoint_script_path, self.workspace_path)
+                self.file_manager.chmod_permissions(os.path.join(self.workspace_path, 'entrypoint.sh'), 0o755)
+                return self.console.handle_success(f"Copied entrypoint.sh to {self.workspace_path}")
+            else:
+                return self.console.handle_error(f"entrypoint.sh not found at {entrypoint_script_path}")
+        except Exception as e:
+            return self.console.handle_error(f"Failed to copy entrypoint.sh: {str(e)}")
 
     def replace_variable_placeholders_in_alembic_init_script(self):
         workspace_alembic_init_script_path = os.path.join(self.workspace_path, 'alembic_init.sh')
