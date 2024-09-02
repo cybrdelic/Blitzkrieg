@@ -5,13 +5,14 @@ from blitzkrieg.db.models.project import Project
 from blitzkrieg.enums.project_types_enum import ProjectTypesEnum
 from blitzkrieg.ui_management.console_instance import console
 from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
+from blitzkrieg.utils.port_allocation import find_available_port
 
 class CookieCutterManager:
     def __init__(self):
         self.template_dir = os.path.join(os.path.dirname(__file__), 'templates')
         self.blitz_env_manager = blitz_env_manager
 
-    def generate_workspace(self, workspace_name: str):
+    def generate_workspace(self, workspace_name: str, postgres_port: int):
         cwd = os.getcwd()
         workspace_path = os.path.join(cwd, workspace_name)
         workspace_template_path = self.get_workspace_template_path()
@@ -21,7 +22,13 @@ class CookieCutterManager:
                 workspace_template_path,
                 no_input=True,
                 extra_context={
-                    'workspace_name': workspace_name
+                    'workspace_name': workspace_name,
+                    'pgadmin_port': find_available_port(5050),
+                    'postgres_port': postgres_port,
+                    'pgadmin_port_forward': find_available_port(80),
+                    'pgadmin_secondary_port': find_available_port(443),
+                    'pgadmin_secondary_port_forward': find_available_port(443),
+                    'postgres_port_forward': find_available_port(5432)
                 },
                 output_dir=cwd
             )
