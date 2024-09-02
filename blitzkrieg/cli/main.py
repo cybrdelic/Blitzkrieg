@@ -145,6 +145,13 @@ def find_path_difference(path1, path2):
 
     return os.path.sep.join(rel_path)
 
+@main.command('set-global-env-var')
+def set_global_env_var():
+    env_var_name = questionary.text("Enter the name of the environment variable:").ask()
+    env_var_value = questionary.text("Enter the value of the environment variable:").ask()
+
+    blitz_env_manager.set_global_env_var(env_var_name, env_var_value)
+
 @main.command('create-project')
 def create_project():
     """Create a new project within the current workspace."""
