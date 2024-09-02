@@ -7,6 +7,7 @@ import time
 
 from psycopg2 import OperationalError
 from sqlalchemy import create_engine, text
+from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
 from blitzkrieg.file_manager import FileManager
 import sys
@@ -23,7 +24,7 @@ class AlembicManager:
             self.workspace_path,
             os.path.join(self.workspace_path, 'sqlalchemy_models'),
         ]
-
+        self.postgres_port = None
     def initialize_alembic(self):
         try:
             self._run_command(['alembic', 'init', 'migrations'])
@@ -42,10 +43,11 @@ class AlembicManager:
             self.console.handle_warning(result.stderr)
 
     def wait_for_db(self):
+        postgres_port = blitz_env_manager.get_workspace_env_var('POSTGRES_PORT')
         max_attempts = 30
         for attempt in range(max_attempts):
             try:
-                engine = create_engine('postgresql+psycopg2://alexfigueroa-db-user:pw@localhost:5432/alexfigueroa')
+                engine = create_engine(f'postgresql+psycopg2://{self.workspace_name}-db-user:pw@localhost:{postgres_port}/{self.workspace_name}')
                 with engine.connect() as connection:
                     connection.execute(text("SELECT 1"))
                 self.console.handle_info("Database is ready.")
@@ -56,7 +58,8 @@ class AlembicManager:
         raise Exception("Database connection timed out")
 
     def create_schema(self):
-        with create_engine('postgresql+psycopg2://alexfigueroa-db-user:pw@localhost:5432/alexfigueroa').connect() as connection:
+        postgres_port = blitz_env_manager.get_workspace_env_var('POSTGRES_PORT')
+        with create_engine(f'postgresql+psycopg2://{self.workspace_name}-db-user:pw@localhost:{postgres_port}/{self.workspace_name}').connect() as connection:
             connection.execute(text("CREATE SCHEMA IF NOT EXISTS project_management"))
             connection.commit()
         self.console.handle_info("Created 'project_management' schema.")
@@ -92,6 +95,7 @@ class AlembicManager:
         self.console.handle_info(f"Python path: {sys.path}")
 
     def _update_env_py(self):
+        postgres_port = blitz_env_manager.get_workspace_env_var('POSTGRES_PORT')
         env_py_path = os.path.join(self.workspace_path, 'migrations', 'env.py')
         with open(env_py_path, 'w') as f:
             f.write(f"""
@@ -124,7 +128,7 @@ metadata = Base.metadata
 for cls in Base.__subclasses__():
     cls.__table__.metadata = metadata
 
-url = 'postgresql+psycopg2://alexfigueroa-db-user:pw@localhost:5432/alexfigueroa'
+url = 'postgresql+psycopg2://{self.workspace_name}-db-user:pw@localhost:{postgres_port}/{self.workspace_name}'
 config = context.config
 config.set_main_option('sqlalchemy.url', url)
 

@@ -55,19 +55,40 @@ class WorkspaceManager:
         self.file_manager = FileManager()
         self.workspace_docker_manager = WorkspaceDockerManager()
 
+
     def blitz_init(self):
         blitzkrieg_initialization_process = self.console.create_workflow("Blitzkrieg Initialization")
 
         workspace_directory_initalization_group = self.console.create_phase(blitzkrieg_initialization_process, "Workspace Directory Initialization")
+        workspace_env_file_initialization = self.console.create_phase(blitzkrieg_initialization_process, "Workspace Environment File Initialization")
         workspace_container_initialization = self.console.create_phase(blitzkrieg_initialization_process, "Workspace Container Initialization")
         database_initialization = self.console.create_phase(blitzkrieg_initialization_process, "Database Initialization")
+
+        self.console.add_action(
+            phase=workspace_env_file_initialization,
+            name="Creating workspace .blitz.env file",
+            func=self.blitz_env_manager.ensure_workspace_env_file
+        )
+
+        self.console.add_action(
+            phase=workspace_env_file_initialization,
+            name="Creating global .blitz.env file",
+            func=self.blitz_env_manager.ensure_global_env_file
+        )
+
+        self.console.add_action(
+            phase=workspace_env_file_initialization,
+            name="Storing workspace configuration in .env file...",
+            func=self.store_credentials,postgres_port=self.postgres_port
+        )
 
         # Directory initialization
         self.console.add_action(
             phase=workspace_directory_initalization_group,
             name="Creating workspace directory...",
             func=cookie_cutter_manager.generate_workspace,
-            workspace_name=self.workspace_name
+            workspace_name=self.workspace_name,
+            postgres_port=self.postgres_port
         )
 
         self.console.add_action(
@@ -89,20 +110,10 @@ class WorkspaceManager:
             name="Copying SQLAlchemy Models"
         )
 
-        self.console.add_action(
-            phase=workspace_directory_initalization_group,
-            name="Creating workspace .blitz.env file",
-            func=self.blitz_env_manager.ensure_workspace_env_file
-        )
+
 
         self.console.add_action(
-            phase=workspace_directory_initalization_group,
-            name="Creating global .blitz.env file",
-            func=self.blitz_env_manager.ensure_global_env_file
-        )
-
-        self.console.add_action(
-            phase=workspace_directory_initalization_group,
+            phase=workspace_env_file_initialization,
             name="Saving workspace directory details to workspace .blitz.env",
             func=self.workspace_directory_manager.save_workspace_directory_details_to_env_file
         )
@@ -139,16 +150,8 @@ class WorkspaceManager:
             func=self.alembic_manager.initialize_alembic
         )
 
-        # Environment setup
 
 
-
-
-        self.console.add_action(
-            phase=database_initialization,
-            name="Storing workspace configuration in .env file...",
-            func=self.store_credentials
-        )
 
         self.console.add_action(
             phase=database_initialization,
@@ -209,13 +212,13 @@ class WorkspaceManager:
     def save_workspace_details(self):
         self.workspace_db_manager.save_workspace_details()
 
-    def store_credentials(self):
+    def store_credentials(self, postgres_port):
         try:
             workspace_env_vars = [
                 ("POSTGRES_USER", self.workspace_db_manager.db_user),
                 ("POSTGRES_DB", self.workspace_name),
                 ("POSTGRES_HOST", self.workspace_db_manager.container_name),
-                ("POSTGRES_PORT", self.workspace_db_manager.db_port),
+                ("POSTGRES_PORT", postgres_port),
                 ("PGADMIN_PORT", self.pgadmin_port),
                 ("WORKSPACE_NAME", self.workspace_name),
                 ("WORKSPACE_DIRECTORY", self.workspace_directory_manager.workspace_path),
