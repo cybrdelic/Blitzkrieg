@@ -1,10 +1,5 @@
 from enum import Enum
 
-from blitzkrieg.project_management.db.connection import get_db_engine, get_db_session
-
-session = get_db_session()
-engine = get_db_engine()
-
 class DeploymentType(Enum):
     PIP = 'pip'
     DOCKER = 'docker'

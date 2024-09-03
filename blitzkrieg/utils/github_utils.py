@@ -1,6 +1,8 @@
 import json
 import os
 from urllib.parse import urlparse
+
+import questionary
 from blitzkrieg.db.models.project import Project
 from blitzkrieg.ui_management.console_instance import console
 import click
@@ -84,3 +86,56 @@ def create_test_pypi_project(project: Project):
         console.handle_success(f"Successfully created test PYPI project for {project_name}")
     except Exception as e:
         console.handle_error(f"An error occurred while creating test PYPI project for {project_name}: {str(e)}")
+
+def get_github_repo_details(repo_url: str = None):
+    github_token = load_github_token()
+    if repo_url:
+        parsed_url = urlparse(repo_url)
+        project_name = os.path.basename(parsed_url.path)
+        github_username = os.path.basename(os.path.dirname(parsed_url.path))
+    else:
+        project_name = questionary.text("Enter the name of the repository").ask()
+        github_username = blitz_env_manager.get_global_env_var('GITHUB_USERNAME')
+        if not github_username:
+            blitz_env_manager.set_global_env_var('GITHUB_USERNAME', questionary.text("Enter your GitHub username").ask())
+            github_username = blitz_env_manager.get_global_env_var('GITHUB_USERNAME')
+
+
+    url = f"https://api.github.com/repos/{github_username}/{project_name}"
+    headers = {
+        "Authorization": f"token {github_token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    console.handle_wait(f"Getting details for repository '{project_name}'")
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        repo_details = response.json()
+        return {
+            "name": repo_details["name"],
+            "description": repo_details["description"],
+            "url": repo_details["html_url"],
+            "stars": repo_details["stargazers_count"],
+            "forks": repo_details["forks_count"],
+            "open_issues": repo_details["open_issues_count"],
+            "created_at": repo_details["created_at"],
+            "updated_at": repo_details["updated_at"]
+        }
+    elif response.status_code == 404:
+        console.handle_error(f"Repository '{project_name}' not found")
+    elif response.status_code == 403:
+        console.handle_error("Permission denied. Check your GitHub token")
+    else:
+        console.handle_error(f"Failed to get repository details. Status code: {response.status_code}")
+
+    return None
+
+def clone_github_repo(repo_url: str):
+    github_token = load_github_token()
+
+
+    workspace_dir_path = blitz_env_manager.get_active_workspace_dir()
+    # get last dirname of workspace_dir_path
+    workspace_name = os.path.basename(workspace_dir_path)
+    run_command(f"cd {workspace_name}/projects && git clone {repo_url}")
