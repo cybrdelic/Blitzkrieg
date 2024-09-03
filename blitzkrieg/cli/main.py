@@ -1,5 +1,6 @@
 
 from typing import List
+import uuid
 from prompt_toolkit import prompt
 import questionary
 from sqlalchemy import text
@@ -13,16 +14,19 @@ from textual import events
 from textual.reactive import Reactive
 from textual.containers import Container
 from blitzkrieg.db.models.project import Project
+from blitzkrieg.db.models.pull_request import PullRequest
 from blitzkrieg.enums.project_types_enum import ProjectTypesEnum
 from blitzkrieg.project_management.db.connection import get_db_session, get_docker_db_session, save_project
+from blitzkrieg.ui_management.tui import run_tui
 from blitzkrieg.utils.git_utils import authenticate_github_cli, commit_staged_files, create_git_tag, stage_files_for_commit, sync_local_changes_to_remote_repository
-from blitzkrieg.utils.github_utils import clone_github_repo, create_github_repo, get_github_repo_details, push_project_to_repo
+from blitzkrieg.utils.github_utils import clone_github_repo, create_github_repo, get_all_github_repo_details_associated_with_user, get_github_repo_details, get_repo_pull_requests, push_project_to_repo
 from blitzkrieg.utils.poetry_utils import build_project_package, initialize_poetry, install_project_dependencies, update_project_version
+from blitzkrieg.utils.project_tracking_utils import save_project_by_repo, save_pull_requests
 from blitzkrieg.utils.validation_utils import validate_package_installation, validate_version_number
 import click
 import subprocess
 from blitzkrieg.cookie_cutter_manager import CookieCutterManager
-from blitzkrieg.ui_management.console_instance import console, app, run_tui
+from blitzkrieg.ui_management.console_instance import console
 from blitzkrieg.workspace_manager import WorkspaceManager
 import rust_codetextualizer
 import os
@@ -37,6 +41,7 @@ def main():
 def tui_command(ctx):
     """Run the Textual User Interface with all available commands."""
     commands = ctx.parent.command.commands.values()
+    print('commands: ', commands)
     run_tui(commands)
 
 @main.command('create-workspace')
@@ -50,10 +55,12 @@ def create_workspace(workspace_name):
 
 @main.command('delete-workspace')
 @click.argument("workspace_name")
-def delete_workspace(workspace_name):
-    WorkspaceManager(
-        workspace_name=workspace_name
-    ).teardown_workspace()
+def delete_workspace(workspace_name, app=None):
+    """Delete a workspace and perform any necessary cleanup."""
+    if app is None:
+        app = console
+    WorkspaceManager(workspace_name=workspace_name).teardown_workspace(app)
+
 
 @main.command('setup-test')
 def setup_test():
@@ -169,6 +176,63 @@ class TableViewer(App):
     def on_key(self, event: events.Key) -> None:
         if event.key in ("q", "Q"):
             self.exit()
+@main.command('track-projects')
+def track_projects():
+    """Track multiple projects within the current workspace."""
+    github_repo_urls = [
+        'https://github.com/ytdl-org/youtube-dl',
+        'https://github.com/openai/whisper',
+        'https://github.com/3b1b/manim',
+        'https://github.com/sherlock-project/sherlock'
+    ]
+
+    for repo_url in github_repo_urls:
+        project_github_repo_details = get_github_repo_details(repo_url)
+        project_name = project_github_repo_details['name']
+        project_github_repo_details['url'] = repo_url
+
+        project = Project(
+            name=project_name,
+            github_repo=project_github_repo_details['url'],
+            description=project_github_repo_details['description']
+        )
+
+        try:
+            session = get_docker_db_session()
+            save_project(project, session)
+            console.handle_success(f"Successfully tracked project: {project_name}")
+        except Exception as e:
+            console.handle_error(f"An error occurred while tracking the project: {str(e)}")
+
+        clone_github_repo(project_github_repo_details['url'])
+
+@main.command('untrack-projects')
+def untrack_projects():
+    """Untrack multiple projects within the current workspace."""
+    session = get_docker_db_session()
+    projects = session.query(Project).all()
+
+    if not projects:
+        console.handle_error("No projects found in the database.")
+        return
+
+    project_choices = [{'name': project.name, 'value': project} for project in projects]
+    projects_to_untrack = questionary.checkbox(
+        "Select projects to untrack:",
+        choices=project_choices
+    ).ask()
+
+    if not projects_to_untrack:
+        console.handle_error("No projects selected. Exiting.")
+        return
+
+    for project in projects_to_untrack:
+        try:
+            session.delete(project)
+            session.commit()
+            console.handle_success(f"Successfully untracked project: {project.name}")
+        except Exception as e:
+            console.handle_error(f"An error occurred while untracking the project: {str(e)}")
 
 @main.command('view-tables')
 def view_tables():
@@ -247,11 +311,11 @@ def view_global_env_vars():
 def create_project():
     """Create a new project within the current workspace."""
     project_types = [
-        {'name': pt.name.replace('_', ' ').title(), 'value': pt.value}
+        {'name': pt.name.replace('_', ' ').title(), 'value': pt}
         for pt in ProjectTypesEnum
     ]
 
-    type = questionary.select(
+    project_type = questionary.select(
         "Select project type:",
         choices=project_types
     ).ask()
@@ -259,11 +323,10 @@ def create_project():
     project_name = questionary.text("Enter the project name:").ask()
     short_description = questionary.text("Enter a short description for the project (roughly 3-5 words):").ask()
     description = questionary.text("Enter a detailed description for the project:").ask()
-    type = type.lower().replace(' ', '_')
 
     project = Project(
         name=project_name,
-        project_type=type,
+        project_type=project_type,
         short_description=short_description,
         description=description
     )
@@ -273,8 +336,8 @@ def create_project():
         console.handle_info(f"Starting the create_project command. About to initialize the CookieCutterManager")
         cookie_cutter_manager = CookieCutterManager()
         console.handle_info(f"CookieCutterManager initialized successfully")
-        console.handle_info(f"About to get the template path for the project type: {type}")
-        template_path = cookie_cutter_manager.get_template_path(type)
+        console.handle_info(f"About to get the template path for the project type: {project_type.name}")
+        template_path = cookie_cutter_manager.get_template_path(project_type)
         console.handle_info(f"Template path retrieved successfully: {template_path}")
         console.handle_info(f"About to generate the project")
         cookie_cutter_manager.generate_project(
@@ -320,6 +383,18 @@ def track_project(repo_url):
         console.handle_error(f"An error occurred while tracking the project: {str(e)}")
 
     clone_github_repo(project_github_repo_details['url'])
+
+@main.command('track-my-github-projects')
+def track_my_github_projects():
+    """Track all GitHub projects owned by the authenticated user."""
+    github_repos = get_all_github_repo_details_associated_with_user()
+    session = get_docker_db_session()
+
+    for repo in github_repos:
+        project = save_project_by_repo(session, repo)
+        pull_requests = get_repo_pull_requests(repo['url'])
+        save_pull_requests(session, pull_requests, project)
+        clone_github_repo(repo['url'])
 
 if __name__ == "__main__":
     click.echo("Starting the application...")
