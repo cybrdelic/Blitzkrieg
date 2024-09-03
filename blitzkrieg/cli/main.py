@@ -22,7 +22,7 @@ from blitzkrieg.utils.validation_utils import validate_package_installation, val
 import click
 import subprocess
 from blitzkrieg.cookie_cutter_manager import CookieCutterManager
-from blitzkrieg.ui_management.console_instance import console
+from blitzkrieg.ui_management.console_instance import console, app, run_tui
 from blitzkrieg.workspace_manager import WorkspaceManager
 import rust_codetextualizer
 import os
@@ -31,6 +31,14 @@ from prompt_toolkit.completion import WordCompleter
 @click.group()
 def main():
     pass
+
+@main.command('tui')
+@click.pass_context
+def tui_command(ctx):
+    """Run the Textual User Interface with all available commands."""
+    commands = ctx.parent.command.commands.values()
+    run_tui(commands)
+
 @main.command('create-workspace')
 @click.argument("workspace_name")
 def create_workspace(workspace_name):
