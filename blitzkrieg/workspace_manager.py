@@ -1,6 +1,7 @@
 # main_blitzkrieg.py
 
 from prettytable import PrettyTable
+import questionary
 from blitzkrieg.alembic_manager import AlembicManager
 from blitzkrieg.class_instances.cookie_cutter_manager import cookie_cutter_manager
 from blitzkrieg.class_instances.docker_manager import docker_manager
@@ -18,10 +19,10 @@ from prettytable import PrettyTable
 from blitzkrieg.workspace_management.templates.managers.workspace_docker_manager import WorkspaceDockerManager
 
 class WorkspaceManager:
-    def __init__(self, workspace_name):
+    def __init__(self, workspace_name=None):
 
         self.blitz_env_manager = blitz_env_manager
-        self.workspace_name: str = workspace_name
+        self.workspace_name = workspace_name
         self.console: ConsoleInterface = console
         self.docker_manager = docker_manager
         self.postgres_port: int = find_available_port(5432)
@@ -107,10 +108,9 @@ class WorkspaceManager:
         self.console.add_action(
             phase=workspace_directory_initalization_group,
             func=self.alembic_manager.copy_sqlalchemy_models,
-            name="Copying SQLAlchemy Models"
+            name="Copying SQLAlchemy Models",
+            migration_epoch_key='initial_migration_epoch'
         )
-
-
 
         self.console.add_action(
             phase=workspace_env_file_initialization,
@@ -150,7 +150,33 @@ class WorkspaceManager:
             func=self.alembic_manager.initialize_alembic
         )
 
+        self.console.add_action(
+            phase=database_initialization,
+            name="Copying over readme.py model",
+            func=self.alembic_manager.copy_sqlalchemy_models,
+            migration_epoch_key='readme_migration_epoch'
+        )
 
+        self.console.add_action(
+            phase=database_initialization,
+            name="Creating README table...",
+            func=self.alembic_manager.run_alembic_migration,
+            message="Creating README table"
+        )
+
+        self.console.add_action(
+            phase=database_initialization,
+            name="Copying over chat_message.py model",
+            func=self.alembic_manager.copy_sqlalchemy_models,
+            migration_epoch_key='chat_message_migration_epoch'
+        )
+
+        self.console.add_action(
+            phase=database_initialization,
+            name="Creating ChatMessage table...",
+            func=self.alembic_manager.run_alembic_migration,
+            message="Creating ChatMessage table"
+        )
 
 
         self.console.add_action(
@@ -161,53 +187,36 @@ class WorkspaceManager:
 
         self.console.run_workflow(blitzkrieg_initialization_process)
 
-    def teardown_workspace(self):
-        teardown_workspace_process = self.console.create_workflow("Teardown Workspace")
-        workspace_teardown_group = self.console.create_phase(teardown_workspace_process, "Workspace Teardown")
-        # self.console.add_action(
-        #     phase=workspace_teardown_group,
-        #     name="Removing workspace details from database",
-        #     func=self.workspace_db_manager.remove_workspace_details
-        # )
-        self.console.add_action(
-            phase=workspace_teardown_group,
-            name="Removing Workspace Postgres Database...",
-            func=self.workspace_db_manager.teardown
-        )
-        self.console.add_action(
-            phase=workspace_teardown_group,
-            name="Removing Workspace PgAdmin Container...",
-            func=self.docker_manager.remove_container,
-            container_name=self.pgadmin_manager.container_name
-        )
+    def find_workspace_directory_names_in_current_directory(self, app):
+        workspace_directory_names = []
+        # check if there are any directories in the current directory that have a .blitz.env file
+        for directory in os.listdir(self.cwd):
+            if os.path.isdir(directory):
+                if os.path.exists(f"{directory}/.blitz.env"):
+                    workspace_directory_names.append(directory)
 
-        self.console.add_action(
-            phase=workspace_teardown_group,
-            name="Removing Workspace Alembic Worker Container...",
-            func=self.docker_manager.remove_container,
-            container_name=f"{self.workspace_name}-alembic-worker"
-        )
+        return workspace_directory_names
 
-        self.console.add_action(
-            phase=workspace_teardown_group,
-            name="Removing All Docker Volumes...",
-            func=self.docker_manager.remove_all_volumes
-        )
+    def teardown_workspace(self, app):
+        workspace_directory_names = self.find_workspace_directory_names_in_current_directory(app)
+        workspace_directory_name_select= questionary.select(
+            "Select the workspace you want to teardown",
+            choices=workspace_directory_names
+        ).ask()
+        self.workspace_name = workspace_directory_name_select
 
-        self.console.add_action(
-            phase=workspace_teardown_group,
-            name="Removing Workspace Docker Network...",
-            func=self.docker_manager.remove_docker_network,
-            network_name=self.docker_network_name
-        )
+        if not workspace_directory_names:
+            app.handle_error("No workspace found in the current directory")
+            return
 
-        self.console.add_action(
-            phase=workspace_teardown_group,
-            name="Removing Workspace Directory...",
-            func=self.workspace_directory_manager.teardown
-        )
 
-        self.console.run_workflow(teardown_workspace_process)
+        # app.display_phase("Teardown Workspace")
+        app.handle_info("Removing Workspace Postgres Database...")
+        self.workspace_db_manager.teardown(app)
+        self.docker_manager.remove_container(app, self.pgadmin_manager.container_name)
+        self.docker_manager.remove_all_volumes(app)
+        self.docker_manager.remove_docker_network(app, self.docker_network_name)
+        self.workspace_directory_manager.teardown(app)
 
     def save_workspace_details(self):
         self.workspace_db_manager.save_workspace_details()
