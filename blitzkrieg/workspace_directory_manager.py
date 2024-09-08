@@ -4,7 +4,6 @@ import os
 import subprocess
 from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
 from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
-
 class WorkspaceDirectoryManager:
     def __init__(self, workspace_name: str = None, console_interface: ConsoleInterface = None):
         self.workspace_name = workspace_name
@@ -12,15 +11,15 @@ class WorkspaceDirectoryManager:
         self.workspace_path = os.path.join(os.getcwd(), self.workspace_name)
         self.blitz_env_manager =  blitz_env_manager
 
-    def teardown(self):
-        return self.delete_workspace_directory()
+    def teardown(self, app):
+        return self.delete_workspace_directory(app)
 
-    def delete_workspace_directory(self):
+    def delete_workspace_directory(self, app):
         try:
             subprocess.run(['rm', '-rf', self.workspace_path], check=True)
-            return self.console.handle_success(f"Deleted workspace directory at [white]{self.workspace_path}[/white]")
+            app.handle_success(f"Deleted workspace directory at [white]{self.workspace_path}[/white]")
         except subprocess.CalledProcessError as e:
-            return self.console.handle_error(f"Failed to delete workspace directory: {str(e)}")
+            app.handle_error(f"Failed to delete workspace directory: {str(e)}")
 
     def create_dir(self, dir_path):
         os.makedirs(dir_path, exist_ok=True)

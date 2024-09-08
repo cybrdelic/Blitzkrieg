@@ -118,8 +118,8 @@ class WorkspaceDbManager:
             if connection:
                 connection.close()
 
-    def teardown(self):
-        return self.docker_manager.remove_container(self.container_name)
+    def teardown(self, app):
+        return self.docker_manager.remove_container(app, self.container_name)
 
     def run_postgres_container(self):
         try:
