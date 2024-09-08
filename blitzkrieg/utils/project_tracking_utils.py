@@ -6,8 +6,6 @@ from blitzkrieg.db.models.pull_request import PullRequest
 from blitzkrieg.ui_management.console_instance import console
 from blitzkrieg.project_management.db.connection import get_docker_db_session, save_project
 from blitzkrieg.utils.github_utils import get_github_repo_details, clone_github_repo
-from blitzkrieg.utils.issue_tracking_utils import fetch_and_save_issues
-from blitzkrieg.utils.pr_tracking_utils import fetch_and_save_pull_requests
 
 def track_single_project(repo_url: str = None) -> None:
     """Track a single project within the current workspace."""
@@ -22,8 +20,6 @@ def track_single_project(repo_url: str = None) -> None:
     )
 
     save_project_and_clone(project)
-    fetch_and_save_issues(project)
-    fetch_and_save_pull_requests(project)
 
 def track_multiple_projects(repo_urls: List[str]) -> None:
     """Track multiple projects within the current workspace."""
