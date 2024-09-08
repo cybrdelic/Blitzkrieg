@@ -57,7 +57,6 @@ class CookieCutterManager:
 
     def get_template_context(self, project: Project):
         project_type = project.project_type
-        project_type = project_type.lower().replace(' ', '_')
         project_name = project.name
         project_description = project.description
         project_short_description = project.short_description
@@ -95,7 +94,6 @@ class CookieCutterManager:
 
     def get_template_path(self, project_type: ProjectTypesEnum):
         # make project_type snake_case
-        project_type = project_type.lower().replace(' ', '_')
         project_type_template_name_mapper = {
             ProjectTypesEnum.PYTHON_CLI: 'poetry-cli-template',
             ProjectTypesEnum.PYO3_RUST_EXTENSION: 'pyo3-rust-extension-template',
@@ -108,18 +106,16 @@ class CookieCutterManager:
             ProjectTypesEnum.DATA_SCIENCE_STACK: 'https://github.com/jgoerner/data-science-stack-cookiecutter',
             ProjectTypesEnum.DJANGO_SAAS: 'https://github.com/ernestofgonzalez/djangorocket',
             ProjectTypesEnum.SWIFT_PROJECT: 'https://github.com/artemnovichkov/swift-project-template',
-            ProjectTypesEnum.PYQT5_GUI: 'https://github.com/artemnovichkov/swift-project-template'
+            ProjectTypesEnum.PYQT5_GUI: 'https://github.com/artemnovichkov/swift-project-template',
+            ProjectTypesEnum.PYO3_RUST_EXTENSION: 'pyo3-rust-extension-template',
         }
-
-        if project_type == ProjectTypesEnum.DJANGO_FASTAPI_REACT_WEB_APPLICATION:
-            return project_type_template_name_mapper.get(project_type)
 
         template_name = project_type_template_name_mapper.get(project_type)
         if not template_name:
-            raise ValueError(f"Invalid project type: {project_type}")
+            raise ValueError(f"Invalid project type: {project_type.name}")
         template_path = os.path.join(self.template_dir, template_name)
         if not os.path.exists(template_path):
-            error_message = f"Template for {project_type} projects not found. Please ensure the template exists at {template_path}"
+            error_message = f"Template for {project_type.name} projects not found. Please ensure the template exists at {template_path}"
             console.handle_error(error_message)
             raise FileNotFoundError(error_message)
         return template_path
