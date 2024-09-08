@@ -6,9 +6,9 @@ from urllib.parse import urlparse
 import requests
 import questionary
 import click
-
 from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
 from blitzkrieg.db.models.project import Project
+from blitzkrieg.db.models.readme import Readme
 from blitzkrieg.ui_management.console_instance import console
 from blitzkrieg.utils.run_command import run_command
 
@@ -108,9 +108,62 @@ def get_all_github_repo_details_associated_with_user() -> List[Dict]:
 
     return None
 
+def get_github_username() -> str:
+    """Get the GitHub username of the authenticated user."""
+    github_username = blitz_env_manager.get_global_env_var('GITHUB_USERNAME')
+    if not github_username:
+        github_username = questionary.text("Enter your GitHub username").ask()
+        blitz_env_manager.set_global_env_var('GITHUB_USERNAME', github_username)
+    return github_username
+
+def get_github_repo_readme(session, project: Project, github_username: str) -> str:
+    project_name = project.name
+    headers = get_github_auth_headers()
+    try:
+        # get repo readme
+
+        readme_url = f"https://api.github.com/repos/{github_username}/{project_name}/readme"
+        readme_response = requests.get(readme_url, headers=headers)
+        readme_content = None
+        readme_file_path = None
+        if readme_response.status_code == 200:
+            readme_content = readme_response.json()
+            readme_file_path = os.path.join(os.getcwd(), f"{project_name}_README.md")
+            with open(readme_file_path, "wb") as f:
+                f.write(requests.get(readme_content["download_url"]).content)
+                readme = Readme(
+                    project_id=project.id,
+                    content=readme_content["content"],
+                    file_path=readme_file_path,
+                    file_name="README"
+                )
+                session.add(readme)
+                try:
+                    session.commit()
+                    console.handle_success(f"Successfully fetched and saved README for project: {project_name}")
+                    return readme
+                except Exception as e:
+                    session.rollback()
+                    console.handle_error(f"An error occurred while saving README to the database: {str(e)}. We had to rollback the transaction.")
+                    return None
+        else:
+            # break the app and throw an error
+            console.handle_error(f"Failed to fetch README for repository '{project_name}'")
+            # break the app
+            return None
+    except Exception as e:
+        console.handle_error(f"Failed to fetch README for repository '{project_name}': {str(e)}")
+        return None
+
+def get_github_auth_headers():
+    github_token = load_github_token()
+    headers = {
+        'Authorization': f'token {github_token}',
+        'Accept': 'application/vnd.github.v3+json'
+    }
+    return headers
 def get_github_repo_details(repo_url: str = None) -> Dict:
     """Get details of a specific GitHub repository."""
-    github_token = load_github_token()
     if repo_url:
         parsed_url = urlparse(repo_url)
         project_name = os.path.basename(parsed_url.path)
@@ -123,13 +176,11 @@ def get_github_repo_details(repo_url: str = None) -> Dict:
             blitz_env_manager.set_global_env_var('GITHUB_USERNAME', github_username)
 
     url = f"https://api.github.com/repos/{github_username}/{project_name}"
-    headers = {
-        "Authorization": f"token {github_token}",
-        "Accept": "application/vnd.github.v3+json"
-    }
+    headers = get_github_auth_headers()
 
     console.handle_wait(f"Getting details for repository '{project_name}'")
     response = requests.get(url, headers=headers)
+
 
     if response.status_code == 200:
         repo_details = response.json()
