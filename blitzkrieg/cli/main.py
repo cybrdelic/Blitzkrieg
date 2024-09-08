@@ -3,13 +3,15 @@ import questionary
 import subprocess
 from sqlalchemy import text
 from blitzkrieg.class_instances.blitz_env_manager import blitz_env_manager
+from blitzkrieg.db.models.readme import Readme
+from blitzkrieg.utils.llm_utils import summarize_project
 from blitzkrieg.workspace_manager import WorkspaceManager
 from blitzkrieg.ui_management.console_instance import console
 from blitzkrieg.db.models.project import Project
 from blitzkrieg.enums.project_types_enum import ProjectTypesEnum
 from blitzkrieg.project_management.db.connection import get_docker_db_session, save_project
 from blitzkrieg.ui_management.tui import run_tui
-from blitzkrieg.utils.github_utils import clone_github_repo, create_github_repo, get_github_repo_details, get_all_github_repo_details_associated_with_user, get_repo_pull_requests, push_project_to_repo
+from blitzkrieg.utils.github_utils import clone_github_repo, create_github_repo, get_github_repo_details, get_all_github_repo_details_associated_with_user, get_github_repo_readme, get_github_username, get_repo_pull_requests, push_project_to_repo
 from blitzkrieg.utils.project_tracking_utils import save_project_by_repo, save_pull_requests
 from blitzkrieg.cookie_cutter_manager import CookieCutterManager
 from blitzkrieg.utils.validation_utils import validate_package_installation, validate_version_number
@@ -121,9 +123,16 @@ def project_track(repo_url):
         description=project_github_repo_details['description']
     )
 
+    github_username = get_github_username()
     try:
         session = get_docker_db_session()
         save_project(project, session)
+        get_github_repo_readme(
+            session,
+            project,
+            github_username
+
+        )
         console.handle_success(f"Successfully tracked project: {project_name}")
     except Exception as e:
         console.handle_error(f"An error occurred while tracking the project: {str(e)}")
@@ -281,6 +290,20 @@ def release_version(version):
         click.echo(f"An error occurred during the release process: {str(e)}")
     except Exception as e:
         click.echo(f"An unexpected error occurred: {str(e)}")
+
+@main.group()
+def ai():
+    """Commands for AI-related tasks."""
+    pass
+
+@main.command("chat")
+def chat():
+    """Start a chat session."""
+    session = get_docker_db_session()
+    project = session.query(Project).where(Project.name == 'Blitzkrieg').first()
+    readme = session.query(Readme).where(Readme.project_id == project.id).first()
+    readme.content = readme.content.replace('\n', ' ')
+    summarize_project(readme.content)
 
 @main.command('launch-interface')
 @click.pass_context
