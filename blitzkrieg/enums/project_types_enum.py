@@ -1,7 +1,7 @@
 # enum for project types
-from enum import Enum
+from enum import Enum as PyEnum
 
-class ProjectTypesEnum(Enum):
+class ProjectTypesEnum(PyEnum):
     PYTHON_CLI = 'python_cli'
     PYO3_RUST_EXTENSION = 'pyo3_rust_extension'
     DJANGO_FASTAPI_REACT_WEB_APPLICATION = 'django_fastapi_react_web_application'
