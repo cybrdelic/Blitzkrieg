@@ -13,7 +13,7 @@ def get_db_engine():
 def get_docker_db_engine():
     postgres_port = blitz_env_manager.get_workspace_env_var('POSTGRES_PORT')
     workspace_name = blitz_env_manager.get_workspace_env_var('WORKSPACE_NAME')
-    engine = create_engine(f'postgresql+psycopg2://{workspace_name}-db-user:pw@host.docker.internal:{postgres_port}/{workspace_name}')
+    engine = create_engine(f"postgresql+psycopg2://{workspace_name}-db-user:pw@host.docker.internal:{str(postgres_port)}/{workspace_name}")
     return engine
 
 def get_docker_db_session():
