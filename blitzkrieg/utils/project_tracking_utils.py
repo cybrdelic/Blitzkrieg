@@ -4,7 +4,7 @@ import questionary
 from blitzkrieg.db.models.project import Project
 from blitzkrieg.db.models.pull_request import PullRequest
 from blitzkrieg.ui_management.console_instance import console
-from blitzkrieg.project_management.db.connection import get_docker_db_session, save_project
+from blitzkrieg.connection import get_docker_db_session, save_project
 from blitzkrieg.utils.github_utils import get_github_repo_details, clone_github_repo
 
 def track_single_project(repo_url: str = None) -> None:
