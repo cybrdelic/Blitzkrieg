@@ -9,7 +9,7 @@ from blitzkrieg.workspace_manager import WorkspaceManager
 from blitzkrieg.ui_management.console_instance import console
 from blitzkrieg.db.models.project import Project
 from blitzkrieg.enums.project_types_enum import ProjectTypesEnum
-from blitzkrieg.project_management.db.connection import get_docker_db_session, save_project
+from blitzkrieg.connection import get_docker_db_session, save_project
 from blitzkrieg.ui_management.tui import run_tui
 from blitzkrieg.utils.github_utils import clone_github_repo, create_github_repo, get_github_repo_details, get_all_github_repo_details_associated_with_user, get_github_repo_readme, get_github_username, get_repo_pull_requests, push_project_to_repo
 from blitzkrieg.utils.project_tracking_utils import save_project_by_repo, save_pull_requests
