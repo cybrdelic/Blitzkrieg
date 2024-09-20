@@ -23,4 +23,4 @@ class Project(Base):
     project_type = Column(Enum(ProjectTypesEnum, name='projecttypesenum', create_constraint=False, native_enum=False))
 
     readme = relationship("Readme", back_populates="project")
-    extrapolation = relationship("Extrapolation", back_populates="project")
+    extrapolation = relationship("Extrapolation", back_populates="project", lazy='dynamic')
