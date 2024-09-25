@@ -19,6 +19,7 @@ class AlembicManager:
         self.file_manager = file_manager
         self.sqlalchemy_models_path = os.path.join(self.workspace_path, 'sqlalchemy_models')
         self.models_directory = os.path.join(os.getcwd(), 'blitzkrieg', 'db', 'models')
+        self.env_py_path = os.path.join(os.getcwd(), 'blitzkrieg', 'db', 'env.py')
         self.console = console if console else ConsoleInterface()
         self.init_paths = [
             self.workspace_path,
@@ -46,19 +47,30 @@ class AlembicManager:
             raise
     def _run_command(self, command):
         try:
-            result = subprocess.run(command, cwd=self.workspace_path, check=True,
+            # Prepend 'poetry run' to ensure the command runs inside the Poetry virtual environment
+            poetry_command = ['poetry', 'run'] + command
+
+            # Run the command in the workspace directory, ensuring it executes in the Poetry environment
+            result = subprocess.run(poetry_command, cwd=self.workspace_path, check=True,
                                     capture_output=True, text=True)
+
+            # Handle command output
             self.console.handle_info(result.stdout)
             if result.stderr:
                 self.console.handle_error(result.stderr)
+
         except subprocess.CalledProcessError as e:
+            # Handle called process errors with detailed information
             self.console.handle_error(f"Command failed: {e}", e)
             self.console.handle_error(f"Command stdout:\n{e.stdout}")
             self.console.handle_error(f"Command stderr:\n{e.stderr}")
             raise
+
         except Exception as e:
+            # Handle any other exceptions
             self.console.handle_error(f"An error occurred during command execution: {str(e)}", e)
             raise
+
 
     def wait_for_db(self):
         postgres_port = blitz_env_manager.get_workspace_env_var('POSTGRES_PORT')
@@ -87,13 +99,7 @@ class AlembicManager:
             env = os.environ.copy()
             env['PYTHONPATH'] = f"{self.workspace_path}:{env.get('PYTHONPATH', '')}"
 
-            result = subprocess.run(['alembic', 'revision', '--autogenerate', '-m', message],
-                                    cwd=self.workspace_path,
-                                    check=False,  # Change this to False to prevent raising an exception
-                                    capture_output=True,
-                                    text=True,
-                                    env=env)
-
+            result = self._run_command(['alembic', 'revision', '--autogenerate', '-m', message], env=env)
             self.console.handle_info(result.stdout)
             if result.stderr:
                 self.console.handle_error(f"Alembic stderr output:\n{result.stderr}")
@@ -121,76 +127,14 @@ class AlembicManager:
         postgres_port = blitz_env_manager.get_workspace_env_var('POSTGRES_PORT')
         env_py_path = os.path.join(self.workspace_path, 'migrations', 'env.py')
         with open(env_py_path, 'w') as f:
-            f.write(f"""
-from sqlalchemy import create_engine, text
-from alembic import context, op
-import logging
-import os
-import sys
-import importlib.util
+            shutil.copy(self.env_py_path, env_py_path)
+            self.file_manager.replace_text_in_file(
+                env_py_path,
+                'blitzkrieg.db.models',
+                'alexfigueroa.sqlalchemy_models'
+            )
 
-sys.path.append(".")
 
-# Load all models dynamically
-def load_models():
-    models_path = os.path.join('sqlalchemy_models')
-    for filename in os.listdir(models_path):
-        if filename.endswith('.py') and filename != '__init__.py':
-            module_name = filename[:-3]
-            module_spec = importlib.util.spec_from_file_location(module_name, os.path.join(models_path, filename))
-            module = importlib.util.module_from_spec(module_spec)
-            module_spec.loader.exec_module(module)
-
-load_models()
-
-# Import the Base class after loading the models
-from sqlalchemy_models.base import Base # type: ignore
-
-# Reflect the metadata
-metadata = Base.metadata
-for cls in Base.__subclasses__():
-    cls.__table__.metadata = metadata
-
-url = 'postgresql+psycopg2://{self.workspace_name}-db-user:pw@localhost:{postgres_port}/{self.workspace_name}'
-config = context.config
-config.set_main_option('sqlalchemy.url', url)
-
-from sqlalchemy_models.base import Base  # type: ignore
-# Replace 'myapp.models' with the actual path to your models
-target_metadata = Base.metadata
-
-def include_object(object, name, type_, reflected, compare_to):
-    if type_ == "table" and object.schema == "project_management":
-        return True
-    return False
-
-def create_schemas(connection):
-    connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS project_management'))
-    connection.commit()  # Ensure the schema creation is committed
-    print('Created schema: project_management')
-
-def run_migrations_offline():
-    context.configure(url=url, target_metadata=target_metadata, literal_binds=True)
-    with context.begin_transaction():
-        context.run_migrations()
-
-def run_migrations_online():
-    connectable = create_engine(url)
-    with connectable.connect() as connection:
-        try:
-            create_schemas(connection)  # Create necessary schemas before running migrations
-            context.configure(connection=connection, target_metadata=target_metadata, include_object=include_object, include_schemas=True, compare_type=True)
-            with context.begin_transaction():
-                context.run_migrations()
-        except Exception as e:
-            logging.error("Error during migration: %s", str(e))
-            raise
-
-if context.is_offline_mode():
-    run_migrations_offline()
-else:
-    run_migrations_online()
-""")
         self.console.handle_info(f"Updated {env_py_path}")
 
 
@@ -249,51 +193,60 @@ else:
         model_filenames = os.listdir(self.models_directory)
         # if key is initial_migration_epoch, exclude readme.py but copy over all other models
         try:
-            if migration_epoch_key == 'initial_migration_epoch':
                 if self.models_directory and model_filenames:
                     for filename in os.listdir(self.models_directory):
-                        if filename in models_to_exclude or filename == '__pycache__' or filename == '__init__.py':
+                        if filename in models_to_exclude or filename == '__pycache__':
                             continue
+                        elif filename == '__init__.py':
+                            full_file_path = os.path.join(self.models_directory, filename)
+                            shutil.copy(full_file_path, self.sqlalchemy_models_path)
+                            self.file_manager.replace_text_in_file(
+                                os.path.join(self.sqlalchemy_models_path, filename),
+                                '.base',
+                                f"alexfigueroa.sqlalchemy_models.base"
+                            )
+                            self.file_manager.replace_text_in_file(
+                                os.path.join(self.sqlalchemy_models_path, filename),
+                                'blitzkrieg.db.models',
+                                f"alexfigueroa.sqlalchemy_models"
+                            )
+                            self.file_manager.replace_text_in_file(
+                                os.path.join(self.sqlalchemy_models_path, filename),
+                                'alexfigueroa.sqlalchemy_modelsalexfigueroa.sqlalchemy_models.',
+                                'alexfigueroa.sqlalchemy_models.'
+                            )
                         else:
                             full_file_path = os.path.join(self.models_directory, filename)
                             shutil.copy(full_file_path, self.sqlalchemy_models_path)
                             self.file_manager.replace_text_in_file(
                                 os.path.join(self.sqlalchemy_models_path, filename),
                                 'blitzkrieg.db.models',
-                                f"sqlalchemy_models"
+                                f"alexfigueroa.sqlalchemy_models"
                             )
                             self.file_manager.replace_text_in_file(
                                 os.path.join(self.sqlalchemy_models_path, filename),
                                 'blitzkrieg.project_management.db.models',
-                                f"sqlalchemy_models"
+                                f"alexfigueroa.sqlalchemy_models"
                             )
                             self.file_manager.replace_text_in_file(
                                 os.path.join(self.sqlalchemy_models_path, filename),
                                 'sqlalchemy_models.Base',
-                                'sqlalchemy_models.base'
-                            )
-                    return self.console.handle_success(f"Copied SQLAlchemy models from [white]{self.models_directory}[/white] to [white]{self.sqlalchemy_models_path}[/white].")
-            else:
-                if self.models_directory and os.path.exists(self.models_directory):
-                    for filename in os.listdir(self.models_directory):
-                        if filename in models_to_include:
-                            full_file_path = os.path.join(self.models_directory, filename)
-                            shutil.copy(full_file_path, self.sqlalchemy_models_path)
-                            self.file_manager.replace_text_in_file(
-                                os.path.join(self.sqlalchemy_models_path, filename),
-                                'blitzkrieg.db.models',
-                                f"sqlalchemy_models"
+                                'alexfigueroa.sqlalchemy_models.base'
                             )
                             self.file_manager.replace_text_in_file(
                                 os.path.join(self.sqlalchemy_models_path, filename),
-                                'blitzkrieg.project_management.db.models',
-                                f"sqlalchemy_models"
+                                'alexfigueroa.alexfigueroa',
+                                'alexfigueroa'
                             )
                             self.file_manager.replace_text_in_file(
                                 os.path.join(self.sqlalchemy_models_path, filename),
-                                'sqlalchemy_models.Base',
-                                'sqlalchemy_models.base'
+                                'alexfigueroa.sqlalchemy_modelsalexfigueroa.sqlalchemy_models.',
+                                'alexfigueroa.sqlalchemy_models.'
                             )
+
+                    self.create_init_files()
+                    # set workspace_dir to PYTHONPATH
+                    sys.path.append(self.workspace_path)
                     return self.console.handle_success(f"Copied SQLAlchemy models from [white]{self.models_directory}[/white] to [white]{self.sqlalchemy_models_path}[/white].")
         except Exception as e:
             return self.console.handle_error(f"Failed to copy SQLAlchemy models: {str(e)}")
