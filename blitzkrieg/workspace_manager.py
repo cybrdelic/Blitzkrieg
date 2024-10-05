@@ -94,6 +94,12 @@ class WorkspaceManager:
 
         self.console.add_action(
             phase=workspace_directory_initalization_group,
+            name="Setting up poetry environment for project",
+            func=self.workspace_directory_manager.setup_poetry_environment
+        )
+
+        self.console.add_action(
+            phase=workspace_directory_initalization_group,
             name="Creating workspace docker network",
             func=self.docker_manager.create_docker_network,
             network_name=self.docker_network_name
@@ -199,6 +205,8 @@ class WorkspaceManager:
 
     def teardown_workspace(self, app):
         workspace_directory_names = self.find_workspace_directory_names_in_current_directory(app)
+        if not workspace_directory_names:
+            workspace_directory_names = ['alexfigueroa']
         workspace_directory_name_select= questionary.select(
             "Select the workspace you want to teardown",
             choices=workspace_directory_names
