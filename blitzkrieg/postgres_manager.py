@@ -6,7 +6,7 @@ from blitzkrieg.db.models.base import Base
 from blitzkrieg.db.models.environment_variable import EnvironmentVariable
 from blitzkrieg.db.models.workspace import Workspace
 from blitzkrieg.pgadmin_manager import PgAdminManager
-from blitzkrieg.utils.run_command import run_command
+from blitzkrieg.utils.run_command import run_command, run_poetry_command
 import time
 from blitzkrieg.ui_management.console_instance import console
 import sqlalchemy
@@ -174,5 +174,5 @@ class WorkspaceDbManager:
 
     def run_alembic_upgrade(self):
         command = ['alembic', 'upgrade', 'head']
-        result = run_command(command)
+        result = run_poetry_command(command, self.workspace_directory_manager.workspace_path)
         return result
