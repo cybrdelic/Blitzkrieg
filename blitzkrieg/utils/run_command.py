@@ -1,6 +1,42 @@
 import subprocess
 import os
 from typing import Union, Tuple, Optional
+from blitzkrieg.ui_management.ConsoleInterface import ConsoleInterface
+from blitzkrieg.ui_management.console_instance import console
+
+def run_poetry_command(command: list[str], workspace_path: str) -> None:
+    try:
+        # Prepend 'poetry run' to ensure the command runs inside the Poetry virtual environment
+        poetry_command = ['poetry', 'run'] + command
+
+        # Run the command in the workspace directory, ensuring it executes in the Poetry environment
+        deactive_venv_result = subprocess.run(['deactivate'], check=False, capture_output=True, text=True)
+        result = subprocess.run(poetry_command, cwd=workspace_path, check=True,
+                                capture_output=True, text=True)
+        reactivate_venv_result = subprocess.run(['source', '.venv/bin/activate'], check=False, capture_output=True, text=True)
+
+        # Handle command output
+        console.handle_info(result.stdout)
+        if result.stderr:
+            console.handle_error(result.stderr)
+
+        if deactive_venv_result.stderr:
+            console.handle_error(deactive_venv_result.stderr)
+
+        if reactivate_venv_result.stderr:
+            console.handle_error(reactivate_venv_result.stderr)
+
+    except subprocess.CalledProcessError as e:
+        # Handle called process errors with detailed information
+        console.handle_error(f"Command failed: {e}", e)
+        console.handle_error(f"Command stdout:\n{e.stdout}")
+        console.handle_error(f"Command stderr:\n{e.stderr}")
+        raise
+
+    except Exception as e:
+        # Handle any other exceptions
+        console.handle_error(f"An error occurred during command execution: {str(e)}", e)
+        raise
 
 def run_command(
     command: Union[str, list],
